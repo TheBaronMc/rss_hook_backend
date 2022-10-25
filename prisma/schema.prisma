@@ -9,3 +9,46 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
+model Flux {
+  id        Int       @default(autoincrement()) @id
+  url       String
+  hooks     Hooks[]
+  articles  Articles[]
+}
+
+model Webhooks {
+  id        Int     @default(autoincrement()) @id
+  url       String
+  flux      Hooks[]
+  articles  Deliveries[]
+}
+
+model Hooks {
+  destination   Flux      @relation(fields: [sourceId], references: [id])
+  destinationId Int
+  source        Webhooks  @relation(fields: [destinationId], references: [id])
+  sourceId      Int
+
+  @@id([sourceId, destinationId])
+}
+
+model Articles {
+  id          Int       @default(autoincrement()) @id
+  title       String
+  description String?
+  pub_date    DateTime  @default(now())
+  url         String?
+  source      Flux      @relation(fields: [sourceId], references: [id])
+  sourceId    Int
+  webhooks    Deliveries[]
+}
+
+model Deliveries {
+  receiver    Webhooks  @relation(fields: [receiverId], references: [id])
+  receiverId  Int
+  content     Articles  @relation(fields: [contentId], references: [id])
+  contentId   Int
+
+  @@id([receiverId, contentId])
+}
