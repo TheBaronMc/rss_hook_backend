@@ -25,9 +25,9 @@ model Webhooks {
 }
 
 model Hooks {
-  destination   Flux      @relation(fields: [sourceId], references: [id])
+  destination   Flux      @relation(fields: [destinationId], references: [id])
   destinationId Int
-  source        Webhooks  @relation(fields: [destinationId], references: [id])
+  source        Webhooks  @relation(fields: [sourceId], references: [id])
   sourceId      Int
 
   @@id([sourceId, destinationId])
