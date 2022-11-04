@@ -16,19 +16,19 @@ export class WebhooksService {
         })
     }
 
-    async createWebhook(url: string) {
+    async createWebhook(url: string): Promise<Webhooks> {
         return this.prisma.webhooks.create({
             data: { url }
         });
     }
 
-    async deleteWebhook(id: number) {
+    async deleteWebhook(id: number): Promise<Webhooks> {
         return this.prisma.webhooks.delete({
             where: { id }
         })
     }
 
-    async updateWebhook(id: number, url: string) {
+    async updateWebhook(id: number, url: string): Promise<Webhooks> {
         return this.prisma.webhooks.update({
             data: { url },
             where: { id }

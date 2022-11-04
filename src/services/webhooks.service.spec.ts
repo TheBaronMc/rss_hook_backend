@@ -16,7 +16,13 @@ describe('Webhooks service test', () => {
     it('Create a webhook', async () => {
         for (let i=1; i<=10; i++) {
             let url = `url${i}`
-            await webhooksService.createWebhook(url);
+            let created_webhook = await webhooksService.createWebhook(url);
+
+            // Returns the created object in the database
+            expect(created_webhook.url).toEqual(url);
+            expect((await prisma.webhooks.findFirst({
+                where: { id: created_webhook.id }
+             })).url).toEqual(url);
             
             let webhooks = await prisma.webhooks.findMany();
 
