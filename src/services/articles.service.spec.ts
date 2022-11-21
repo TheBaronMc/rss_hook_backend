@@ -1,7 +1,7 @@
 import { PrismaService } from './prisma.service';
 import { ArticleService } from './articles.service'
 
-describe('Flux service test', () => {
+describe('Article service test', () => {
     let prisma = new PrismaService();
     let articleService = new ArticleService(prisma);
 
