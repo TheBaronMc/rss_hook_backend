@@ -128,7 +128,58 @@ describe('Webhook Controller', () => {
         });
     });
 
-    describe('delete', () => {});
+    describe('delete', () => {
+        it('Empty body', async () => {
+            let request = {
+                body: {}
+            } as unknown as Request;
+
+            await expect(webhookController.delete(request))
+            .rejects
+            .toThrow(HttpException);
+        });
+
+        it('Unknow id', async () => {
+            let request = {
+                body: {
+                    id: -1
+                }
+            } as unknown as Request;
+
+            await expect(webhookController.delete(request))
+            .rejects
+            .toThrow(HttpException);
+        });
+
+        it('Delete webhook and everything about it', async () => {
+            let webhook = await webhookService.createWebhook('url');
+
+            let flux = await fluxService.createFlux('url');
+
+            let article = await articleService.createArticle('toto', flux.id);
+
+            await hooksService.create_hook(flux.id, webhook.id);
+
+            await deliveryService.createDelevery(webhook.id, article.id);
+
+            let request = {
+                body: {
+                    id: webhook.id
+                }
+            } as unknown as Request;
+
+            await webhookController.delete(request)
+
+            expect((await webhookService.getAllWebhooks()).length)
+            .toEqual(0);
+
+            expect((await deliveryService.getDelevriesTo(webhook.id)).length)
+            .toEqual(0);
+
+            expect((await hooksService.get_hooked(webhook.id)).length)
+            .toEqual(0);
+        });
+    });
 
     describe('update', () => {
         it('Empty body', async () => {
