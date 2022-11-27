@@ -7,15 +7,10 @@ import { HttpException } from '@nestjs/common';
 describe('Hook Controller', () => {
     let hooksController: HooksController;
 
-    let prismaService: PrismaService;
-    let fluxService: FluxService;
-    let webhookService: WebhooksService;
-    let hooksService: HooksService;
-
-    prismaService = new PrismaService();
-    fluxService = new FluxService(prismaService);
-    webhookService = new WebhooksService(prismaService);
-    hooksService = new HooksService(prismaService);
+    let prismaService = new PrismaService();
+    let fluxService = new FluxService(prismaService);
+    let webhookService = new WebhooksService(prismaService);
+    let hooksService = new HooksService(prismaService);
 
     beforeEach(async () => {
         const app: TestingModule = await Test.createTestingModule({
@@ -25,15 +20,15 @@ describe('Hook Controller', () => {
 
         hooksController = app.get<HooksController>(HooksController);
 
-        prismaService.hooks.deleteMany();
-        prismaService.flux.deleteMany();
-        prismaService.webhooks.deleteMany();
+        await prismaService.hooks.deleteMany();
+        await prismaService.flux.deleteMany();
+        await prismaService.webhooks.deleteMany();
     });
 
     afterAll(async () => {
-        prismaService.hooks.deleteMany();
-        prismaService.flux.deleteMany();
-        prismaService.webhooks.deleteMany();
+        await prismaService.hooks.deleteMany();
+        await prismaService.flux.deleteMany();
+        await prismaService.webhooks.deleteMany();
     });
 
 

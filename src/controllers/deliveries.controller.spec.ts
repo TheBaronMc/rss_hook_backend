@@ -7,17 +7,12 @@ import { HttpException } from '@nestjs/common';
 describe('Delivery Controller', () => {
     let deliveryController: DeliveriesController;
 
-    let prismaService: PrismaService;
-    let articleService: ArticleService;
-    let fluxService: FluxService;
-    let webhookService: WebhooksService;
-    let deliveryService: DeliveryService;
+    let prismaService = new PrismaService();
+    let articleService = new ArticleService(prismaService);
+    let fluxService = new FluxService(prismaService);
+    let webhookService = new WebhooksService(prismaService);
+    let deliveryService = new DeliveryService(prismaService);
 
-    prismaService = new PrismaService();
-    articleService = new ArticleService(prismaService);
-    fluxService = new FluxService(prismaService);
-    webhookService = new WebhooksService(prismaService);
-    deliveryService = new DeliveryService(prismaService);
 
     beforeEach(async () => {
         const app: TestingModule = await Test.createTestingModule({
@@ -27,17 +22,17 @@ describe('Delivery Controller', () => {
 
         deliveryController = app.get<DeliveriesController>(DeliveriesController);
 
-        prismaService.deliveries.deleteMany();
-        prismaService.articles.deleteMany();
-        prismaService.flux.deleteMany();
-        prismaService.webhooks.deleteMany();
+        await prismaService.deliveries.deleteMany();
+        await prismaService.articles.deleteMany();
+        await prismaService.flux.deleteMany();
+        await prismaService.webhooks.deleteMany();
     });
 
     afterAll(async () => {
-        prismaService.deliveries.deleteMany();
-        prismaService.articles.deleteMany();
-        prismaService.flux.deleteMany();
-        prismaService.webhooks.deleteMany();
+        await prismaService.deliveries.deleteMany();
+        await prismaService.articles.deleteMany();
+        await prismaService.flux.deleteMany();
+        await prismaService.webhooks.deleteMany();
     });
 
     describe('getAllDeliveriesContentOf', () => {

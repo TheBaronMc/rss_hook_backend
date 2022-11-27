@@ -7,13 +7,9 @@ import { HttpException } from '@nestjs/common';
 describe('Article Controller', () => {
     let articleController: ArticleController;
 
-    let prismaService: PrismaService;
-    let articleService: ArticleService;
-    let fluxService: FluxService;
-
-    prismaService = new PrismaService();
-    articleService = new ArticleService(prismaService);
-    fluxService = new FluxService(prismaService);
+    let prismaService = new PrismaService();
+    let articleService = new ArticleService(prismaService);
+    let fluxService = new FluxService(prismaService);
 
     beforeEach(async () => {
         const app: TestingModule = await Test.createTestingModule({
@@ -23,13 +19,13 @@ describe('Article Controller', () => {
 
         articleController = app.get<ArticleController>(ArticleController);
 
-        prismaService.articles.deleteMany();
-        prismaService.flux.deleteMany();
+        await prismaService.articles.deleteMany();
+        await prismaService.flux.deleteMany();
     });
 
     afterAll(async () => {
-        prismaService.articles.deleteMany();
-        prismaService.flux.deleteMany();
+        await prismaService.articles.deleteMany();
+        await prismaService.flux.deleteMany();
     });
 
     describe('getAll', () => {
