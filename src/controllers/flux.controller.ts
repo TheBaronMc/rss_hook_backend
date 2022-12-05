@@ -22,7 +22,7 @@ export class FluxController {
         private readonly articleService: ArticleService) {}
 
     @Post()
-    async create(@Req() request: Request) {
+    async create(@Req() request: Request): Promise<Flux> {
         if (!request.body.url)
             throw new HttpException('A url is required', HttpStatus.FORBIDDEN);
 
@@ -46,38 +46,7 @@ export class FluxController {
 
         this.feeder.addListener(event, this.onNewItem(flux));
 
-        /*
-        this.rssFlux.set(flux.id, setInterval(async () => {
-            const fl = await this.fluxService.getFlux(flux.id);
-            const parser = new Parser();
-            const feed = await parser.parseURL(flux.url);
-            
-
-            // TODO: Get most recent articles (last_articles.length == feed.items.length)
-            const last_articles = await this.articleService.getArticlesSendedBy(fl.id);
-            const article_exist = (article) => last_articles.some((a) => a.title == article.title && a.sourceId == fl.id);
-
-            const webhooks = await this.hookService.get_hooks(fl.id);
-
-            if (webhooks.length >= 0)
-                feed.items.forEach(async article => {
-                    if (!article_exist(article)) {
-                        let created_article = await this.articleService.createArticle(
-                            article.title,
-                            fl.id,
-                            article.description,
-                            article.link
-                        );
-
-                        webhooks.forEach(webhook => {
-                            this.devliveryService.createDelevery(webhook.id, created_article.id);
-                            axios.post(webhook.url, article);
-                        });
-                    }
-                });
-        }, 1000));
-        */
-
+        return flux
     }
     
     @Get()
@@ -86,7 +55,7 @@ export class FluxController {
     }
 
     @Delete()
-    async delete(@Req() request: Request) {
+    async delete(@Req() request: Request): Promise<Flux> {
         if (!request.body.id)
             throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
 
@@ -121,7 +90,7 @@ export class FluxController {
     }
 
     @Patch()
-    async update(@Req() request: Request) {
+    async update(@Req() request: Request): Promise<Flux> {
         if (!request.body.id)
             throw new HttpException('Missing id', HttpStatus.FORBIDDEN);
         if (!request.body.url)
