@@ -7,7 +7,7 @@ import { Webhooks } from '@prisma/client';
 
 import { Request } from 'express';
 
-@Controller()
+@Controller('webhooks')
 export class WebhookController {
 
     constructor(private readonly webhookService: WebhooksService,

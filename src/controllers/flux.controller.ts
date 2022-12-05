@@ -11,10 +11,9 @@ import { Request } from 'express';
 import RssFeedEmitter = require('rss-feed-emitter');
 import axios from 'axios';
 
-@Controller()
+@Controller('flux')
 export class FluxController {
 
-    private rssFlux: Map<number,NodeJS.Timer> = new Map();
     private feeder: RssFeedEmitter = new RssFeedEmitter({ skipFirstLoad: true });
 
     constructor(private readonly fluxService: FluxService,
@@ -165,10 +164,25 @@ export class FluxController {
             );
             const webhooks = await this.hookService.get_hooks(flux.id);
 
-            webhooks.forEach(webhook => {
+            for (let webhook of webhooks) {
                 this.devliveryService.createDelevery(webhook.id, created_article.id);
-                axios.post(webhook.url, item);
-            });
+                
+                try {
+                    await axios.post(webhook.url, {
+                        embeds: [
+                            { 
+                                title: item.title,
+                                type: 'rich',
+                                description: item.description,
+                                url: item.link 
+                            }
+                        ]
+                    });
+                    console.log(`Article ${created_article.id} published to webhook ${webhook.id}`);
+                } catch (error) {
+                    console.log(`Article ${created_article.id} not published to webhook ${webhook.id}`);
+                }
+            }
         };
     }
 }

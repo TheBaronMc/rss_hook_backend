@@ -5,7 +5,7 @@ import { Articles } from '@prisma/client';
 
 import { Request } from 'express';
 
-@Controller()
+@Controller('articles')
 export class ArticleController {
 
     constructor(private readonly articleService: ArticleService) {}
