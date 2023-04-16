@@ -27,7 +27,8 @@ $ npm run start:prod
 
 ```bash
 # unit tests
-$ npm run test
+$ npm run test              # Run all tests
+$ npx jest -t 'test name'   # Run a specific suite/test
 ```
 
 ## Entrypoints
