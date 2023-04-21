@@ -98,6 +98,16 @@ $ npx jest -t 'test name'   # Run a specific suite/test
 
 **GET**: `/flux`
 
+**Reponse:** 
+List of flux
+```json
+[
+    { "id":   1, "url":  "http://url.example.com"  },
+    ...
+    { "id":   n, "url":  "http://url.example.com"  }
+]
+```
+
 #### Delete a flux
 
 **DELETE**: `/flux`
