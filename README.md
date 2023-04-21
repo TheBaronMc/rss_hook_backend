@@ -31,6 +31,57 @@ $ npm run test              # Run all tests
 $ npx jest -t 'test name'   # Run a specific suite/test
 ```
 
+## Data types
+
+### Flux
+
+```json
+{
+    "id":   0,  // int
+    "url":  ""  // string
+}
+```
+
+### Webhook
+
+```json
+{
+    "id":   0,  // int
+    "url":  ""  // string
+}
+```
+
+### Hook
+
+```json
+{
+  "destinationId":  0,  // Flux id - int
+  "sourceId":       0   // Webhook id - int
+}
+```
+
+### Article
+
+```json
+{
+  "id":             0,  // Int
+  "title":          "", // String
+  "description":    "", // String
+  "pub_date":       "", // Date
+  "url":            "", // Optional - String
+  "sourceId":       0,  // Int
+}
+```
+
+### Delivery
+
+```json
+{
+  "receiverId": 0, // Webhook id - Int
+  "contentId":  0  // Article id - Int
+}
+```
+
 ## Entrypoints
 
 ### Flux
