@@ -46,6 +46,8 @@ export class FluxController {
 
         this.feeder.addListener(event, this.onNewItem(flux));
 
+        return flux;
+
         /*
         this.rssFlux.set(flux.id, setInterval(async () => {
             const fl = await this.fluxService.getFlux(flux.id);

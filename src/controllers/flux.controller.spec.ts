@@ -61,6 +61,17 @@ describe('Flux controller tests', () => {
             .toThrow(HttpException);
         });
 
+        it('Good url', async () => {
+            let request = {
+                body: {
+                    url: 'http://toto.org'
+                }
+            } as unknown as Request;
+
+            expect(await fluxController.create(request))
+            .toEqual((await fluxService.getAllFlux())[0]);
+        });
+
         /*
         it('Update when new article show up', async () => {
             let server = new RssFluxTest();
