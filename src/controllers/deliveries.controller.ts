@@ -20,10 +20,10 @@ export class DeliveriesController {
             try {
                 id = parseInt(request.query.id as string);
                 if (isNaN(id)) {
-                    throw new HttpException('Id should be a number is required', HttpStatus.FORBIDDEN);
+                    throw new HttpException('Id should be a number', HttpStatus.FORBIDDEN);
                 }
             } catch {
-                throw new HttpException('Id should be a number is required', HttpStatus.FORBIDDEN);
+                throw new HttpException('Id should be a number', HttpStatus.FORBIDDEN);
             }
         
         return this.deliveryService.getDelevriesOf(id);
@@ -39,10 +39,10 @@ export class DeliveriesController {
         try {
             id = parseInt(request.query.id as string);
             if (isNaN(id)) {
-                throw new HttpException('Id should be a number is required', HttpStatus.FORBIDDEN);
+                throw new HttpException('Id should be a number', HttpStatus.FORBIDDEN);
             }
         } catch {
-            throw new HttpException('Id should be a number is required', HttpStatus.FORBIDDEN);
+            throw new HttpException('Id should be a number', HttpStatus.FORBIDDEN);
         }
 
         return this.deliveryService.getDelevriesTo(id);

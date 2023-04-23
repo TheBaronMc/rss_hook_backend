@@ -18,11 +18,11 @@ export class ArticleController {
     @Get('flux')
     async getAllByFlux(@Req() request: Request): Promise<Articles[]> {
         if (!request.query.id)
-            throw new HttpException('An article id is required', HttpStatus.FORBIDDEN);
+            throw new HttpException('An flux id is required', HttpStatus.FORBIDDEN);
     
         let id = parseInt(request.query.id as string);
         if (isNaN(id))
-            throw new HttpException('An article id is a number', HttpStatus.FORBIDDEN);
+            throw new HttpException('A Flux id must a number', HttpStatus.FORBIDDEN);
 
         return this.articleService.getArticlesSendedBy(id);
     }
