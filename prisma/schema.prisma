@@ -12,14 +12,14 @@ datasource db {
 
 model Flux {
   id        Int       @default(autoincrement()) @id
-  url       String
+  url       String    @unique
   hooks     Hooks[]
   articles  Articles[]
 }
 
 model Webhooks {
   id        Int     @default(autoincrement()) @id
-  url       String
+  url       String  @unique
   flux      Hooks[]
   articles  Deliveries[]
 }
