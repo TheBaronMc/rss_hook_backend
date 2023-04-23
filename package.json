@@ -26,6 +26,7 @@
     "@nestjs/platform-express": "^9.0.0",
     "@prisma/client": "^4.5.0",
     "axios": "^1.2.0",
+    "fast-xml-parser": "^4.2.2",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rss-feed-emitter": "^3.2.3",
