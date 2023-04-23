@@ -61,37 +61,28 @@ describe('Flux controller tests', () => {
             .toThrow(HttpException);
         });
 
-        /*
-        it('Update when new article show up', async () => {
-            let server = new RssFluxTest();
-            server.listen(80);
-
+        it('Good url but not a feed', async () => {
             let request = {
                 body: {
-                    url: 'http://localhost'
+                    url: 'http://toto.org'
                 }
             } as unknown as Request;
-            let flux = await fluxController.create(request);
 
-            server.addItem({
-                title: 'Article 1',
-                description: 'Great article',
-                link: 'toto.org'
-            })
-
-
-            console.log(new Date());
-            
-            await new Promise(resolve => setTimeout(resolve, 4000));
-
-            console.log(new Date());
-            expect((await articleService.getArticles()).length)
-            .toEqual(1);
-
-
-            server.close();
+            await expect(fluxController.create(request))
+            .rejects
+            .toThrow(HttpException);
         });
-        */
+
+        it('Good url and good feed', async () => {
+            let request = {
+                body: {
+                    url: 'https://www.lemonde.fr/sport/rss_full.xml'
+                }
+            } as unknown as Request;
+
+            expect(await fluxController.create(request))
+            .toEqual((await fluxService.getAllFlux())[0]);
+        });
     });
 
     describe('getAll', () => {

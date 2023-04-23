@@ -9,6 +9,7 @@ import { Flux } from '@prisma/client';
 import { Request } from 'express';
 
 import RssFeedEmitter = require('rss-feed-emitter');
+import { XMLParser } from 'fast-xml-parser';
 import axios from 'axios';
 
 @Controller('flux')
@@ -33,6 +34,26 @@ export class FluxController {
             throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
         }
 
+        // Is feed valid
+        let response = await axios.get(request.body.url);
+        let parser = new XMLParser({
+            ignoreAttributes: false,
+            alwaysCreateTextNode: true,
+            ignoreDeclaration: true,
+            parseAttributeValue: true
+        });
+        let feed = parser.parse(response.data);
+
+        // TODO: Remove this hotfix and use a true feed parser
+        let root = feed['rss'];
+        if (root) {
+            if (root['@_version'] != 2.0) {
+                throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
+            }
+        } else {
+            throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
+        }
+
         let flux = await this.fluxService.createFlux(request.body.url);
 
 
@@ -45,7 +66,7 @@ export class FluxController {
         });
 
         this.feeder.addListener(event, this.onNewItem(flux));
-
+        
         return flux
     }
     
