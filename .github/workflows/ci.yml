@@ -10,7 +10,7 @@ on:
     branches: [ "master", "dev" ]
 
 env:
-  DATABASE_URL: Monday
+  DATABASE_URL: "file:./dev.db"
 
 jobs:
   build:
