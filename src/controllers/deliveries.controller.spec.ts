@@ -7,21 +7,29 @@ import { HttpException } from '@nestjs/common';
 describe('Delivery Controller', () => {
     let deliveryController: DeliveriesController;
 
-    let prismaService = new PrismaService();
-    let articleService = new ArticleService(prismaService);
-    let fluxService = new FluxService(prismaService);
-    let webhookService = new WebhooksService(prismaService);
-    let deliveryService = new DeliveryService(prismaService);
+    let prismaService: PrismaService;
+    let articleService: ArticleService;
+    let fluxService: FluxService;
+    let webhookService: WebhooksService;
+    let deliveryService: DeliveryService
 
-
-    beforeEach(async () => {
+    beforeAll(async () => {
         const app: TestingModule = await Test.createTestingModule({
             controllers: [DeliveriesController],
             providers: [DeliveryService, PrismaService],
         }).compile();
 
+        prismaService = app.get<PrismaService>(PrismaService);
+        deliveryService = app.get<DeliveryService>(DeliveryService);
+
         deliveryController = app.get<DeliveriesController>(DeliveriesController);
 
+        articleService = new ArticleService(prismaService);
+        fluxService = new FluxService(prismaService);
+        webhookService = new WebhooksService(prismaService);
+    });
+
+    beforeEach(async () => {
         await prismaService.deliveries.deleteMany();
         await prismaService.articles.deleteMany();
         await prismaService.flux.deleteMany();

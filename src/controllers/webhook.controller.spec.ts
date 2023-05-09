@@ -7,25 +7,31 @@ import { HttpException } from '@nestjs/common';
 describe('Webhook Controller', () => {
     let webhookController: WebhookController;
 
-    let prismaService = new PrismaService();
-    let fluxService = new FluxService(prismaService);
-    let webhookService = new WebhooksService(prismaService);
-    let hooksService = new HooksService(prismaService);
-    let deliveryService = new DeliveryService(prismaService);
-    let articleService = new ArticleService(prismaService);
+    let prismaService: PrismaService;
+    let fluxService: FluxService;
+    let webhookService: WebhooksService;
+    let hooksService: HooksService;
+    let deliveryService: DeliveryService;
+    let articleService: ArticleService;
 
-    let ereaseData = async () => {
-
-    };
-
-    beforeEach(async () => {
+    beforeAll(async () => {
         const app: TestingModule = await Test.createTestingModule({
             controllers: [WebhookController],
             providers: [WebhooksService, HooksService, DeliveryService, PrismaService],
         }).compile();
 
+        prismaService = app.get<PrismaService>(PrismaService);
+        webhookService = app.get<WebhooksService>(WebhooksService);
+        deliveryService = app.get<DeliveryService>(DeliveryService);
+        hooksService = app.get<HooksService>(HooksService);
+
         webhookController = app.get<WebhookController>(WebhookController);
 
+        fluxService = new FluxService(prismaService);
+        articleService = new ArticleService(prismaService);
+    });
+
+    beforeEach(async () => {
         await prismaService.deliveries.deleteMany();
         await prismaService.articles.deleteMany();
         await prismaService.hooks.deleteMany();
@@ -95,10 +101,7 @@ describe('Webhook Controller', () => {
             } as unknown as Request;
 
             expect(await webhookController.create(request))
-            .toEqual((await webhookService.getAllWebhooks())[0]);
-
-            console.log((await webhookService.getAllWebhooks()).length);
-            
+            .toEqual((await webhookService.getAllWebhooks())[0]);            
         });
 
         it('Register the same url', async () => {
