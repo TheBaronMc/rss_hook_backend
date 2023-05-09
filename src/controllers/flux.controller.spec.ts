@@ -1,28 +1,41 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 import { FluxController } from './flux.controller'
 import { ArticleService, DeliveryService, WebhooksService, HooksService, FluxService, PrismaService } from '../services'
 import { Request } from 'express';
 import { HttpException } from '@nestjs/common';
-import { IncomingMessage, Server, ServerResponse } from 'http'
 
 describe('Flux controller tests', () => {
     let fluxController: FluxController;
 
-    let prismaService = new PrismaService();
-    let articleService = new ArticleService(prismaService);
-    let fluxService = new FluxService(prismaService);
-    let webhookService = new WebhooksService(prismaService);
-    let deliveryService = new DeliveryService(prismaService);
-    let hookService = new HooksService(prismaService);
+    let prismaService: PrismaService;
+    let articleService: ArticleService;
+    let fluxService: FluxService;
+    let webhookService: WebhooksService;
+    let deliveryService: DeliveryService;
+    let hookService: HooksService;
 
-    beforeEach(async () => {
-        const app: TestingModule = await Test.createTestingModule({
+    let app: TestingModule;
+
+    beforeAll(async () => {
+        app = await Test.createTestingModule({
             controllers: [FluxController],
             providers: [FluxService, ArticleService, HooksService, DeliveryService, PrismaService],
         }).compile();
 
-        fluxController = app.get<FluxController>(FluxController);
+        prismaService   = app.get<PrismaService>(PrismaService);
+        fluxService     = app.get<FluxService>(FluxService);
+        articleService  = app.get<ArticleService>(ArticleService);
+        hookService     = app.get<HooksService>(HooksService);
+        deliveryService = app.get<DeliveryService>(DeliveryService);
 
+        fluxController  = app.get<FluxController>(FluxController);
+
+        webhookService  = new WebhooksService(prismaService);
+
+        await app.init();
+    });
+
+    beforeEach(async () => {
         await prismaService.deliveries.deleteMany();
         await prismaService.articles.deleteMany();
         await prismaService.hooks.deleteMany();
@@ -36,6 +49,8 @@ describe('Flux controller tests', () => {
         await prismaService.hooks.deleteMany();
         await prismaService.webhooks.deleteMany();
         await prismaService.flux.deleteMany();
+
+        //delete fluxService;
     });
     
     describe('create', () => {
@@ -219,7 +234,7 @@ describe('Flux controller tests', () => {
             let request = {
                 body: {
                     id: '-1',
-                    url: 'http://toto.org'
+                    url: 'https://www.lemonde.fr/sport/rss_full.xml'
                 }
             } as unknown as Request;
 
@@ -229,7 +244,7 @@ describe('Flux controller tests', () => {
         });
 
         it('Good id and good url', async () => {
-            const new_url = 'http://toto.org';
+            const new_url = 'https://www.lemonde.fr/sport/rss_full.xml';
 
             let flux = await fluxService.createFlux('url');
 
@@ -247,44 +262,3 @@ describe('Flux controller tests', () => {
         });
     });
 });
-
-type item = { title: string, 
-    description?: string, 
-    link?: string };
-
-class RssFluxTest extends Server {
-
-    private items: Array<item> = [];
-
-    constructor() {
-        super()
-        this.on('request', this.requestListener);
-    }
-
-    addItem(item: item) {
-        this.items.push(item);
-    }
-
-    private itemsToString(): string {
-        let str = "";
-        for (let item of this.items) {
-            let itemStr = "<item>";
-            itemStr += '<title>' + item.title + '</title>';
-            itemStr += '<description>' + item.description + '</description>';
-            itemStr += '<link>' + item.link + '</link>';
-            itemStr += '</item>';
-            str += itemStr;
-        }
-        return str;
-    }
-
-    private requestListener(request: IncomingMessage, response: ServerResponse) {
-        //response.setHeader('content-type', '')
-
-        response.write(
-            "<?xml version=\"1.0\"?>\n<rss version=\"2.0\"><channel><title>Test Rss Flux</title>" + this.itemsToString() + "</channel></rss>"
-        );
-
-        response.end();
-    }
-}
