@@ -4,7 +4,7 @@ import { HooksService } from '../services/hooks.service';
 import { DeliveryService } from '../services/deliveries.service';
 import { ArticleService } from '../services/articles.service';
 
-import { Flux } from '@prisma/client';
+import { Flux, Prisma } from '@prisma/client';
 
 import { Request } from 'express';
 
@@ -54,7 +54,16 @@ export class FluxController {
             throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
         }
 
-        let flux = await this.fluxService.createFlux(request.body.url);
+        let flux;
+        try {
+            flux = await this.fluxService.createFlux(request.body.url);
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2002') {
+                    throw new HttpException('This URL is already registered', HttpStatus.FORBIDDEN);
+                }
+            }
+        }
 
 
         let event = `flux${flux.id}`;

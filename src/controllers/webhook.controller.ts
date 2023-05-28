@@ -3,7 +3,7 @@ import { WebhooksService } from '../services/webhooks.service';
 import { HooksService } from '../services/hooks.service';
 import { DeliveryService } from '../services/deliveries.service';
 
-import { Webhooks } from '@prisma/client';
+import { Webhooks, Prisma } from '@prisma/client';
 
 import { Request } from 'express';
 
@@ -25,7 +25,18 @@ export class WebhookController {
             throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
         }
 
-        return this.webhookService.createWebhook(request.body.url);
+        let webhook;
+        try {
+            webhook = await this.webhookService.createWebhook(request.body.url);
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2002') {
+                    throw new HttpException('This URL is already registered', HttpStatus.FORBIDDEN);
+                }
+            }
+        }
+
+        return webhook;
     }
     
     @Get()

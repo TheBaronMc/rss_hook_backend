@@ -36,6 +36,11 @@ describe('Article Controller', () => {
     });
 
     describe('getAll', () => {
+        beforeEach(async () => {
+            await prismaService.articles.deleteMany();
+            await prismaService.flux.deleteMany();
+        });
+
         it('Zero article', async () => {
             expect(await articleController.getAll())
             .toEqual(await articleService.getArticles());
@@ -62,6 +67,11 @@ describe('Article Controller', () => {
     });
 
     describe('getAllByFlux', () => {
+        beforeEach(async () => {
+            await prismaService.articles.deleteMany();
+            await prismaService.flux.deleteMany();
+        });
+
         it('Zero article', async () => {
             let request = {
                 query: {
@@ -105,8 +115,8 @@ describe('Article Controller', () => {
         });
 
         it('Two article', async () => {
-            let flux1 = await fluxService.createFlux('url');
-            let flux2 = await fluxService.createFlux('url');
+            let flux1 = await fluxService.createFlux('url1');
+            let flux2 = await fluxService.createFlux('url2');
 
             await articleService.createArticle('article1', flux1.id);
             await articleService.createArticle('article2', flux1.id);
