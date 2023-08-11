@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, HttpException, HttpStatus, Patch, Post, Req } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, Req } from '@nestjs/common';
 import { FluxService } from '../services/flux.service';
 import { HooksService } from '../services/hooks.service';
 import { DeliveryService } from '../services/deliveries.service';
@@ -14,6 +14,7 @@ import axios from 'axios';
 
 @Controller('flux')
 export class FluxController {
+    private readonly logger = new Logger(FluxController.name);
 
     private feeder: RssFeedEmitter = new RssFeedEmitter({ skipFirstLoad: true });
 
@@ -24,13 +25,16 @@ export class FluxController {
 
     @Post()
     async create(@Req() request: Request): Promise<Flux> {
-        if (!request.body.url)
+        if (!request.body.url) {
+            this.logger.debug('Request error - No URL');
             throw new HttpException('A url is required', HttpStatus.FORBIDDEN);
+        }
 
         // Url format check
         try {
             new URL(request.body.url);
         } catch {
+            this.logger.debug(`Request error - ${request.body.url} not a url`);
             throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
         }
 
@@ -48,9 +52,11 @@ export class FluxController {
         let root = feed['rss'];
         if (root) {
             if (root['@_version'] != 2.0) {
+                this.logger.debug(`Request error - ${request.body.url} is an invalid feed`);
                 throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
             }
         } else {
+            this.logger.debug(`Request error - ${request.body.url} is an invalid feed`);
             throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
         }
 
@@ -60,6 +66,7 @@ export class FluxController {
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
                 if (error.code === 'P2002') {
+                    this.logger.debug(`Request error - ${request.body.url} is already registered`);
                     throw new HttpException('This URL is already registered', HttpStatus.FORBIDDEN);
                 }
             }
@@ -86,15 +93,21 @@ export class FluxController {
 
     @Delete()
     async delete(@Req() request: Request): Promise<Flux> {
-        if (!request.body.id)
+        if (!request.body.id) {
+            this.logger.debug('Request error - No id');
             throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
+        }
 
         let flux_id: number = parseInt(request.body.id);
-        if (isNaN(flux_id))
+        if (isNaN(flux_id)) {
+            this.logger.debug('Request error - Id must be a number');
             throw new HttpException('Flux id has to be a number', HttpStatus.FORBIDDEN);
+        }
 
-        if (!await this.exist(flux_id))
-        throw new HttpException('This id doesn\'t exist', HttpStatus.FORBIDDEN);
+        if (!await this.exist(flux_id)) {
+            this.logger.debug(`Request error - ${flux_id} doesn't exists`);
+            throw new HttpException('This id doesn\'t exist', HttpStatus.FORBIDDEN);
+        }
         
         // Removing all hooks
         let hooks = await this.hookService.get_hooks(flux_id);
@@ -109,25 +122,29 @@ export class FluxController {
 
         await this.articleService.deleteArticlesOf(flux_id);
 
-        /*
-        clearInterval(this.rssFlux[flux_id]);
-        this.rssFlux.delete(flux_id);
-        */
         let deleted_flux = await this.fluxService.deleteFlux(flux_id);
         this.feeder.remove(deleted_flux.url);
+
+        this.logger.log(`${deleted_flux.url} deleted`)
 
         return deleted_flux;
     }
 
     @Patch()
     async update(@Req() request: Request): Promise<Flux> {
-        if (!request.body.id)
+        if (!request.body.id) {
+            this.logger.debug(`Missiing id`);
             throw new HttpException('Missing id', HttpStatus.FORBIDDEN);
-        if (!request.body.url)
+        }
+        if (!request.body.url) {
+            this.logger.debug(`Missiing url`);
             throw new HttpException('Missing url', HttpStatus.FORBIDDEN);
+        }
 
-        if (!await this.exist(request.body.id))
+        if (!await this.exist(request.body.id)) {
+            this.logger.debug(`Wrond id`);
             throw new HttpException('Wrong id', HttpStatus.FORBIDDEN);
+        }
 
         try {
             new URL(request.body.url);
@@ -153,7 +170,7 @@ export class FluxController {
 
     private onNewItem(flux: Flux) {
         return async (item) => {
-            console.log('NEW ITEM!!!!!!!!!!!!');
+            this.logger.log(`New article ${item.title} from ${flux.url}`)
             
             const created_article = await this.articleService.createArticle(
                 item.title,
@@ -177,9 +194,9 @@ export class FluxController {
                             }
                         ]
                     });
-                    console.log(`Article ${created_article.id} published to webhook ${webhook.id}`);
+                    this.logger.log(`Article ${created_article.id} published to webhook ${webhook.id}`);
                 } catch (error) {
-                    console.log(`Article ${created_article.id} not published to webhook ${webhook.id}`);
+                    this.logger.error(`Article ${created_article.id} not published to webhook ${webhook.id}`);
                 }
             }
         };

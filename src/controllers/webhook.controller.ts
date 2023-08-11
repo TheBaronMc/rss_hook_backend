@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, HttpException, HttpStatus, Patch, Post, Req } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, Req } from '@nestjs/common';
 import { WebhooksService } from '../services/webhooks.service';
 import { HooksService } from '../services/hooks.service';
 import { DeliveryService } from '../services/deliveries.service';
@@ -9,6 +9,7 @@ import { Request } from 'express';
 
 @Controller('webhooks')
 export class WebhookController {
+    private readonly logger = new Logger(WebhookController.name);
 
     constructor(private readonly webhookService: WebhooksService,
         private readonly hookService: HooksService,
@@ -16,12 +17,16 @@ export class WebhookController {
 
     @Post()
     async create(@Req() request: Request) {
-        if (!request.body.url)
+        if (!request.body.url) {
+            this.logger.debug("Request error - Missing url");
             throw new HttpException('A url is required', HttpStatus.FORBIDDEN);
+        }
+            
 
         try {
             new URL(request.body.url);
         } catch {
+            this.logger.debug(`Request error - '${request.body.url}' is not a URL`);
             throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
         }
 
@@ -31,10 +36,13 @@ export class WebhookController {
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
                 if (error.code === 'P2002') {
+                    this.logger.debug(`Request error - '${request.body.url}' already registered`);
                     throw new HttpException('This URL is already registered', HttpStatus.FORBIDDEN);
                 }
             }
         }
+
+        this.logger.log(`New webhook: ${request.body.url}`);
 
         return webhook;
     }
@@ -46,11 +54,15 @@ export class WebhookController {
 
     @Delete()
     async delete(@Req() request: Request) {
-        if (!request.body.id)
+        if (!request.body.id) {
+            this.logger.debug("Request error - Missing id");
             throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
+        }
 
-        if (!await this.exist(request.body.id))
+        if (!await this.exist(request.body.id)) {
+            this.logger.debug(`Request error - No webhook with id ${request.body.id}`);
             throw new HttpException('This id does not exist', HttpStatus.FORBIDDEN);
+        }
 
         let id = request.body.id;
 
@@ -62,26 +74,41 @@ export class WebhookController {
         for (let fl of flux)
             await this.hookService.delete_hook(fl.id, id);
 
-        return this.webhookService.deleteWebhook(id);
+        let webhook = await this.webhookService.deleteWebhook(id);
+        this.logger.log(`Webhook ${webhook.id} (${webhook.url}) has been deleted`);
+
+        return webhook;
     }
 
     @Patch()
     async update(@Req() request: Request) {
-        if (!request.body.id)
+        if (!request.body.id) {
+            this.logger.debug('Request error - Missing id');
             throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
-        if (!request.body.url)
+        }
+            
+        if (!request.body.url) {
+            this.logger.debug('Request error - Missing URL');
             throw new HttpException('A url is required', HttpStatus.FORBIDDEN);
+        }
+            
 
         try {
             new URL(request.body.url);
         } catch {
+            this.logger.debug(`Request error - '${request.body.url}' is not a URL`);
             throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
         }
 
-        if (!await this.exist(request.body.id))
+        if (!await this.exist(request.body.id)) {
+            this.logger.debug(`Request error - No webhook with id '${request.body.id}'`);
             throw new HttpException('Wrong id', HttpStatus.FORBIDDEN);
+        }
+        
+        let webhook = await this.webhookService.updateWebhook(request.body.id, request.body.url);
+        this.logger.log(`Webhook ${webhook.id} updated, new URL: ${webhook.url}`);
 
-        return this.webhookService.updateWebhook(request.body.id, request.body.url);
+        return webhook;
     }
 
     private async exist(id: number): Promise<boolean> {
