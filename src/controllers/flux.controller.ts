@@ -1,4 +1,4 @@
-import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, Req } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, Req, OnModuleDestroy } from '@nestjs/common';
 import { FluxService } from '../services/flux.service';
 import { HooksService } from '../services/hooks.service';
 import { DeliveryService } from '../services/deliveries.service';
@@ -13,7 +13,7 @@ import { XMLParser } from 'fast-xml-parser';
 import axios from 'axios';
 
 @Controller('flux')
-export class FluxController {
+export class FluxController implements OnModuleDestroy {
     private readonly logger = new Logger(FluxController.name);
 
     private feeder: RssFeedEmitter = new RssFeedEmitter({ skipFirstLoad: true });
@@ -202,8 +202,9 @@ export class FluxController {
         };
     }
 
-    stopFeeder() {
-        this.feeder.destroy;
+    onModuleDestroy() {
+        this.feeder.removeAllListeners()
+        this.feeder.destroy()
     }
 }
 

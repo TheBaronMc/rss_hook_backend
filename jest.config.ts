@@ -3,7 +3,7 @@ import type {Config} from 'jest';
 const config: Config = {
     verbose: true,
     forceExit: true,
-    detectOpenHandles: false,
+    detectOpenHandles: true,
     maxWorkers: 1,
     testTimeout: 50000,
     moduleFileExtensions: [

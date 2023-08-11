@@ -10,9 +10,11 @@ describe('Article Controller', () => {
     let prismaService: PrismaService;
     let articleService: ArticleService;
     let fluxService: FluxService
+
+    let app: TestingModule;
     
     beforeAll(async () => {
-        const app: TestingModule = await Test.createTestingModule({
+        app = await Test.createTestingModule({
             controllers: [ArticleController],
             providers: [ArticleService, PrismaService],
         }).compile();

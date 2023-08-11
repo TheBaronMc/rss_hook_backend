@@ -11,14 +11,17 @@ describe('Delivery Controller', () => {
     let articleService: ArticleService;
     let fluxService: FluxService;
     let webhookService: WebhooksService;
-    let deliveryService: DeliveryService
+    let deliveryService: DeliveryService;
+
+    let app: TestingModule;
 
     beforeAll(async () => {
-        const app: TestingModule = await Test.createTestingModule({
+        app = await Test.createTestingModule({
             controllers: [DeliveriesController],
             providers: [DeliveryService, PrismaService],
         }).compile();
 
+        
         prismaService = app.get<PrismaService>(PrismaService);
         deliveryService = app.get<DeliveryService>(DeliveryService);
 
@@ -41,6 +44,8 @@ describe('Delivery Controller', () => {
         await prismaService.articles.deleteMany();
         await prismaService.flux.deleteMany();
         await prismaService.webhooks.deleteMany();
+
+        await app.close()
     });
 
     describe('getAllDeliveriesContentOf', () => {
