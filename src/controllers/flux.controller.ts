@@ -201,5 +201,9 @@ export class FluxController {
             }
         };
     }
+
+    stopFeeder() {
+        this.feeder.destroy;
+    }
 }
 

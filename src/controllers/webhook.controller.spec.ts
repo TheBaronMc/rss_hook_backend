@@ -3,7 +3,6 @@ import { WebhookController } from './webhook.controller'
 import { FluxService, WebhooksService, HooksService, ArticleService, DeliveryService, PrismaService } from '../services'
 import { Request } from 'express';
 import { HttpException } from '@nestjs/common';
-import { assert } from 'console';
 
 describe('Webhook Controller', () => {
     let webhookController: WebhookController;

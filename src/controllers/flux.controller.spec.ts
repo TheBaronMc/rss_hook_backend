@@ -50,7 +50,7 @@ describe('Flux controller tests', () => {
         await prismaService.webhooks.deleteMany();
         await prismaService.flux.deleteMany();
 
-        //delete fluxService;
+        fluxController.stopFeeder();
     });
     
     describe('create', () => {
