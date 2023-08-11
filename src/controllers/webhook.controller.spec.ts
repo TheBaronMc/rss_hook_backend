@@ -3,7 +3,6 @@ import { WebhookController } from './webhook.controller'
 import { FluxService, WebhooksService, HooksService, ArticleService, DeliveryService, PrismaService } from '../services'
 import { Request } from 'express';
 import { HttpException } from '@nestjs/common';
-import { assert } from 'console';
 
 describe('Webhook Controller', () => {
     let webhookController: WebhookController;
@@ -15,8 +14,10 @@ describe('Webhook Controller', () => {
     let deliveryService: DeliveryService;
     let articleService: ArticleService;
 
+    let app: TestingModule;
+
     beforeAll(async () => {
-        const app: TestingModule = await Test.createTestingModule({
+        app = await Test.createTestingModule({
             controllers: [WebhookController],
             providers: [WebhooksService, HooksService, DeliveryService, PrismaService],
         }).compile();
@@ -46,6 +47,8 @@ describe('Webhook Controller', () => {
         await prismaService.hooks.deleteMany();
         await prismaService.flux.deleteMany();
         await prismaService.webhooks.deleteMany();
+
+        await app.close();
     });
 
 

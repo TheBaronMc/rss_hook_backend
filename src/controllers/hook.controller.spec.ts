@@ -12,8 +12,10 @@ describe('Hook Controller', () => {
     let webhookService: WebhooksService;
     let hooksService: HooksService;
 
+    let app: TestingModule;
+
     beforeAll(async () => {
-        const app: TestingModule = await Test.createTestingModule({
+        app = await Test.createTestingModule({
             controllers: [HooksController],
             providers: [HooksService, FluxService, WebhooksService, PrismaService],
         }).compile();
@@ -36,6 +38,8 @@ describe('Hook Controller', () => {
         await prismaService.hooks.deleteMany();
         await prismaService.flux.deleteMany();
         await prismaService.webhooks.deleteMany();
+
+        await app.close();
     });
 
 
