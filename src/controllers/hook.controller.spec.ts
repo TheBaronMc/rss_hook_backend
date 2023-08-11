@@ -213,7 +213,7 @@ describe('Hook Controller', () => {
             .toEqual(await hooksService.get_hooked(webhook.id));
 
             for (let i=0; i<0; i++) {
-                let flux = await fluxService.createFlux('url');
+                let flux = await fluxService.createFlux(`url${i}`);
                 
                 await hooksService.create_hook(flux.id, webhook.id);
 
@@ -223,8 +223,8 @@ describe('Hook Controller', () => {
         });
 
         it('Two webooks exist', async () => {
-            let webhook1 = await webhookService.createWebhook('url');
-            let webhook2 = await webhookService.createWebhook('url');
+            let webhook1 = await webhookService.createWebhook('url1');
+            let webhook2 = await webhookService.createWebhook('url2');
 
             let request = {
                 query: {
@@ -238,7 +238,7 @@ describe('Hook Controller', () => {
             await hooksService.create_hook((await fluxService.createFlux('url')).id, webhook2.id);
 
             for (let i=0; i<0; i++) {
-                let flux = await fluxService.createFlux('url');
+                let flux = await fluxService.createFlux(`url${i}`);
                 
                 await hooksService.create_hook(flux.id, webhook1.id);
 
@@ -308,7 +308,7 @@ describe('Hook Controller', () => {
             .toEqual(await hooksService.get_hooked(flux.id));
 
             for (let i=0; i<0; i++) {
-                let webhook = await webhookService.createWebhook('url');
+                let webhook = await webhookService.createWebhook(`url${i}`);
                 
                 await hooksService.create_hook(flux.id, webhook.id);
 
@@ -318,8 +318,8 @@ describe('Hook Controller', () => {
         });
 
         it('Two flux exist', async () => {
-            let flux1 = await fluxService.createFlux('url');
-            let flux2 = await fluxService.createFlux('url');
+            let flux1 = await fluxService.createFlux('url1');
+            let flux2 = await fluxService.createFlux('url2');
 
             let request = {
                 query: {
@@ -333,7 +333,7 @@ describe('Hook Controller', () => {
             await hooksService.create_hook((await fluxService.createFlux('url')).id, flux2.id);
 
             for (let i=0; i<0; i++) {
-                let flux = await fluxService.createFlux('url');
+                let flux = await fluxService.createFlux(`url${i+3}`);
                 
                 await hooksService.create_hook(flux.id, flux1.id);
 

@@ -9,6 +9,7 @@ describe('Delevery service test', () => {
         await prisma.deliveries.deleteMany();
         await prisma.articles.deleteMany();
         await prisma.deliveries.deleteMany();
+        await prisma.flux.deleteMany();
         await prisma.webhooks.deleteMany();
     });
 
@@ -16,6 +17,7 @@ describe('Delevery service test', () => {
         await prisma.deliveries.deleteMany();
         await prisma.articles.deleteMany();
         await prisma.deliveries.deleteMany();
+        await prisma.flux.deleteMany();
         await prisma.webhooks.deleteMany();
     });
 
@@ -62,8 +64,8 @@ describe('Delevery service test', () => {
 
     it('Delete deliveries to a webhook', async () => {
         let flux = await prisma.flux.create({ data: { url: 'url'} });
-        let webhook1 = await prisma.webhooks.create({ data: { url: 'url' } });
-        let webhook2 = await prisma.webhooks.create({ data: { url: 'url' } });
+        let webhook1 = await prisma.webhooks.create({ data: { url: 'url1' } });
+        let webhook2 = await prisma.webhooks.create({ data: { url: 'url2' } });
 
         for (let i=0; i<10; i++) {
             let article = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
@@ -91,7 +93,7 @@ describe('Delevery service test', () => {
         let article2 = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
 
         for (let i=0; i<10; i++) {
-            let webhook = await prisma.webhooks.create({ data: { url: 'url' } });
+            let webhook = await prisma.webhooks.create({ data: { url: `url${i}` } });
             await prisma.deliveries.create({
                 data: {
                     contentId: (i%2 == 0) ? article1.id : article2.id,
@@ -112,8 +114,8 @@ describe('Delevery service test', () => {
 
     it('Get deliveries received by a webhook', async () => {
         let flux = await prisma.flux.create({ data: { url: 'url'} });
-        let webhook1 = await prisma.webhooks.create({ data: { url: 'url' } });
-        let webhook2 = await prisma.webhooks.create({ data: { url: 'url' } });
+        let webhook1 = await prisma.webhooks.create({ data: { url: 'url1' } });
+        let webhook2 = await prisma.webhooks.create({ data: { url: 'url2' } });
 
         for (let i=0; i<10; i++) {
             let article = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
@@ -140,7 +142,7 @@ describe('Delevery service test', () => {
         let article2 = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
 
         for (let i=0; i<10; i++) {
-            let webhook = await prisma.webhooks.create({ data: { url: 'url' } });
+            let webhook = await prisma.webhooks.create({ data: { url: `url${i}` } });
             await prisma.deliveries.create({
                 data: {
                     contentId: (i%2 == 0) ? article1.id : article2.id,

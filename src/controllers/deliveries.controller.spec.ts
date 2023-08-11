@@ -189,7 +189,7 @@ describe('Delivery Controller', () => {
             let flux = await fluxService.createFlux('url');
             let article = await articleService.createArticle('title', flux.id);
             for (let i=0; i<2; i++) {
-                let webhook = await webhookService.createWebhook('url');
+                let webhook = await webhookService.createWebhook(`url${i}`);
                 await deliveryService.createDelevery(webhook.id, article.id);
             }
             let request = { 

@@ -3,6 +3,7 @@ import { WebhookController } from './webhook.controller'
 import { FluxService, WebhooksService, HooksService, ArticleService, DeliveryService, PrismaService } from '../services'
 import { Request } from 'express';
 import { HttpException } from '@nestjs/common';
+import { assert } from 'console';
 
 describe('Webhook Controller', () => {
     let webhookController: WebhookController;
@@ -113,7 +114,9 @@ describe('Webhook Controller', () => {
 
             await webhookController.create(request);
             
-            await webhookController.create(request);
+            await expect(webhookController.create(request))
+            .rejects
+            .toThrow(HttpException);
         });
     });
 
@@ -123,7 +126,7 @@ describe('Webhook Controller', () => {
             .toEqual(await webhookService.getAllWebhooks());
 
             for (let i=0; i<2; i++) {
-                await webhookService.createWebhook('url');
+                await webhookService.createWebhook(`url${i}`);
 
                 expect(await webhookController.getAll())
                 .toEqual(await webhookService.getAllWebhooks());
