@@ -9,7 +9,7 @@ import { Request } from 'express';
 
 @Controller('hooks')
 export class HooksController {
-    private readonly logger = new Logger();
+    private readonly logger = new Logger(HooksController.name);
 
     constructor(private readonly hookService: HooksService,
         private readonly webhookService: WebhooksService,
