@@ -37,9 +37,9 @@ export class HooksController {
             
         let res = await this.hookService.create_hook(request.body.flux_id, request.body.webhook_id);
         if (res) {
-            this.logger.log(`Hook created between flux ${request.body.flux_id,} and webhook ${request.body.webhook_id}`);
+            this.logger.log(`Hook created between flux ${request.body.flux_id} and webhook ${request.body.webhook_id}`);
         } else {
-            this.logger.log(`Hook already exists between flux ${request.body.flux_id,} and webhook ${request.body.webhook_id}`);
+            this.logger.log(`Hook already exists between flux ${request.body.flux_id} and webhook ${request.body.webhook_id}`);
         }
 
         return res;
