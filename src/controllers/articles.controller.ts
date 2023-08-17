@@ -1,6 +1,6 @@
 import { Controller, Get, HttpException, HttpStatus, Req, UseFilters } from '@nestjs/common';
 import { ArticleService } from '../services/articles.service';
-import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter'
+import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter';
 
 import { Articles } from '@prisma/client';
 
@@ -22,7 +22,7 @@ export class ArticleController {
         if (!request.query.id)
             throw new HttpException('An flux id is required', HttpStatus.FORBIDDEN);
     
-        let id = parseInt(request.query.id as string);
+        const id = parseInt(request.query.id as string);
         if (isNaN(id))
             throw new HttpException('A Flux id must a number', HttpStatus.FORBIDDEN);
 
