@@ -1,11 +1,13 @@
-import { Controller, Get, HttpException, HttpStatus, Req } from '@nestjs/common';
+import { Controller, Get, HttpException, HttpStatus, Req, UseFilters } from '@nestjs/common';
 import { DeliveryService } from '../services/deliveries.service';
+import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter';
 
 import { Articles, Webhooks } from '@prisma/client';
 
 import { Request } from 'express';
 
 @Controller('deliveries')
+@UseFilters(PrismaClientKnownRequestErrorFilter)
 export class DeliveriesController {
 
     constructor(private readonly deliveryService: DeliveryService) {}

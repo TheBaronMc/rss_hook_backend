@@ -1,13 +1,15 @@
-import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, Req } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, Req, UseFilters } from '@nestjs/common';
 import { WebhooksService } from '../services/webhooks.service';
 import { BindingService } from '../services/bindings.service';
 import { DeliveryService } from '../services/deliveries.service';
+import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter';
 
 import { Webhooks, Prisma } from '@prisma/client';
 
 import { Request } from 'express';
 
 @Controller('webhooks')
+@UseFilters(PrismaClientKnownRequestErrorFilter)
 export class WebhookController {
     private readonly logger = new Logger(WebhookController.name);
 

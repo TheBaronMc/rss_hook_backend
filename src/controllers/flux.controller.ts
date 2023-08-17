@@ -1,8 +1,9 @@
-import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, Req, OnModuleDestroy } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, Req, OnModuleDestroy, UseFilters } from '@nestjs/common';
 import { FluxService } from '../services/flux.service';
 import { BindingService } from '../services/bindings.service';
 import { DeliveryService } from '../services/deliveries.service';
 import { ArticleService } from '../services/articles.service';
+import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter';
 
 import { Flux, Prisma } from '@prisma/client';
 
@@ -13,6 +14,7 @@ import { XMLParser } from 'fast-xml-parser';
 import axios from 'axios';
 
 @Controller('flux')
+@UseFilters(PrismaClientKnownRequestErrorFilter)
 export class FluxController implements OnModuleDestroy {
     private readonly logger = new Logger(FluxController.name);
 

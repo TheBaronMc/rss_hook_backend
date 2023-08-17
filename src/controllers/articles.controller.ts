@@ -1,11 +1,13 @@
-import { Controller, Get, HttpException, HttpStatus, Req } from '@nestjs/common';
+import { Controller, Get, HttpException, HttpStatus, Req, UseFilters } from '@nestjs/common';
 import { ArticleService } from '../services/articles.service';
+import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter'
 
 import { Articles } from '@prisma/client';
 
 import { Request } from 'express';
 
 @Controller('articles')
+@UseFilters(PrismaClientKnownRequestErrorFilter)
 export class ArticleController {
 
     constructor(private readonly articleService: ArticleService) {}
