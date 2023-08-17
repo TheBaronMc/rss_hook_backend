@@ -1,6 +1,6 @@
 import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, Req, OnModuleDestroy } from '@nestjs/common';
 import { FluxService } from '../services/flux.service';
-import { HooksService } from '../services/hooks.service';
+import { BindingService } from '../services/bindings.service';
 import { DeliveryService } from '../services/deliveries.service';
 import { ArticleService } from '../services/articles.service';
 
@@ -19,7 +19,7 @@ export class FluxController implements OnModuleDestroy {
     private feeder: RssFeedEmitter = new RssFeedEmitter({ skipFirstLoad: true });
 
     constructor(private readonly fluxService: FluxService,
-        private readonly hookService: HooksService,
+        private readonly bindingService: BindingService,
         private readonly devliveryService: DeliveryService,
         private readonly articleService: ArticleService) {}
 
@@ -39,17 +39,17 @@ export class FluxController implements OnModuleDestroy {
         }
 
         // Is feed valid
-        let response = await axios.get(request.body.url);
-        let parser = new XMLParser({
+        const response = await axios.get(request.body.url);
+        const parser = new XMLParser({
             ignoreAttributes: false,
             alwaysCreateTextNode: true,
             ignoreDeclaration: true,
             parseAttributeValue: true
         });
-        let feed = parser.parse(response.data);
+        const feed = parser.parse(response.data);
 
         // TODO: Remove this hotfix and use a true feed parser
-        let root = feed['rss'];
+        const root = feed['rss'];
         if (root) {
             if (root['@_version'] != 2.0) {
                 this.logger.debug(`Request error - ${request.body.url} is an invalid feed`);
@@ -60,7 +60,7 @@ export class FluxController implements OnModuleDestroy {
             throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
         }
 
-        let flux;
+        let flux: Flux;
         try {
             flux = await this.fluxService.createFlux(request.body.url);
         } catch (error) {
@@ -73,8 +73,7 @@ export class FluxController implements OnModuleDestroy {
         }
 
 
-        let event = `flux${flux.id}`;
-
+        const event = `flux${flux.id}`;
         this.feeder.add({
             url: flux.url,
             refresh: 2000,
@@ -83,7 +82,7 @@ export class FluxController implements OnModuleDestroy {
 
         this.feeder.addListener(event, this.onNewItem(flux));
         
-        return flux
+        return flux;
     }
     
     @Get()
@@ -98,36 +97,36 @@ export class FluxController implements OnModuleDestroy {
             throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
         }
 
-        let flux_id: number = parseInt(request.body.id);
-        if (isNaN(flux_id)) {
+        const fluxId: number = parseInt(request.body.id);
+        if (isNaN(fluxId)) {
             this.logger.debug('Request error - Id must be a number');
             throw new HttpException('Flux id has to be a number', HttpStatus.FORBIDDEN);
         }
 
-        if (!await this.exist(flux_id)) {
-            this.logger.debug(`Request error - ${flux_id} doesn't exists`);
+        if (!await this.exist(fluxId)) {
+            this.logger.debug(`Request error - ${fluxId} doesn't exists`);
             throw new HttpException('This id doesn\'t exist', HttpStatus.FORBIDDEN);
         }
         
         // Removing all hooks
-        let hooks = await this.hookService.get_hooks(flux_id);
-        for (let hook of hooks)
-            await this.hookService.delete_hook(flux_id, hook.id)
+        const hooks = await this.bindingService.getAssociatedWebhooks(fluxId);
+        for (const hook of hooks)
+            await this.bindingService.deleteBinding(fluxId, hook.id);
 
         // Removing all articles and deliveries
-        let articles = await this.articleService.getArticlesSendedBy(flux_id);
+        const articles = await this.articleService.getArticlesSendedBy(fluxId);
         
-        for (let article of articles)
+        for (const article of articles)
             await this.devliveryService.deleteDeleveriesOf(article.id);
 
-        await this.articleService.deleteArticlesOf(flux_id);
+        await this.articleService.deleteArticlesOf(fluxId);
 
-        let deleted_flux = await this.fluxService.deleteFlux(flux_id);
-        this.feeder.remove(deleted_flux.url);
+        const deletedFlux = await this.fluxService.deleteFlux(fluxId);
+        this.feeder.remove(deletedFlux.url);
 
-        this.logger.log(`${deleted_flux.url} deleted`)
+        this.logger.log(`${deletedFlux.url} deleted`);
 
-        return deleted_flux;
+        return deletedFlux;
     }
 
     @Patch()
@@ -152,13 +151,13 @@ export class FluxController implements OnModuleDestroy {
             throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
         }
 
-        const old_flux = await this.fluxService.getFlux(request.body.id);
+        const oldFlux = await this.fluxService.getFlux(request.body.id);
 
-        this.feeder.remove(old_flux.url);
+        this.feeder.remove(oldFlux.url);
         this.feeder.add({
             url: request.body.url,
             refresh: 2000,
-            eventName: `flux${old_flux.id}`
+            eventName: `flux${oldFlux.id}`
         });
 
         return await this.fluxService.updateFlux(request.body.id, request.body.url);
@@ -169,19 +168,19 @@ export class FluxController implements OnModuleDestroy {
     }
 
     private onNewItem(flux: Flux) {
-        return async (item) => {
-            this.logger.log(`New article ${item.title} from ${flux.url}`)
+        return async (item: any): Promise<void> => {
+            this.logger.log(`New article ${item.title} from ${flux.url}`);
             
-            const created_article = await this.articleService.createArticle(
+            const createdArticle = await this.articleService.createArticle(
                 item.title,
                 flux.id,
                 item.description,
                 item.link
             );
-            const webhooks = await this.hookService.get_hooks(flux.id);
+            const webhooks = await this.bindingService.getAssociatedWebhooks(flux.id);
 
-            for (let webhook of webhooks) {
-                this.devliveryService.createDelevery(webhook.id, created_article.id);
+            for (const webhook of webhooks) {
+                this.devliveryService.createDelevery(webhook.id, createdArticle.id);
                 
                 try {
                     await axios.post(webhook.url, {
@@ -194,17 +193,17 @@ export class FluxController implements OnModuleDestroy {
                             }
                         ]
                     });
-                    this.logger.log(`Article ${created_article.id} published to webhook ${webhook.id}`);
+                    this.logger.log(`Article ${createdArticle.id} published to webhook ${webhook.id}`);
                 } catch (error) {
-                    this.logger.error(`Article ${created_article.id} not published to webhook ${webhook.id}`);
+                    this.logger.error(`Article ${createdArticle.id} not published to webhook ${webhook.id}`);
                 }
             }
         };
     }
 
-    onModuleDestroy() {
-        this.feeder.removeAllListeners()
-        this.feeder.destroy()
+    onModuleDestroy(): void {
+        this.feeder.removeAllListeners();
+        this.feeder.destroy();
     }
 }
 

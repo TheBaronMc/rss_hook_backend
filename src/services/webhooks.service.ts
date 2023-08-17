@@ -13,7 +13,7 @@ export class WebhooksService {
     async getWebhook(id: number): Promise<Webhooks> {
         return this.prisma.webhooks.findFirst({
             where: { id }
-        })
+        });
     }
 
     async createWebhook(url: string): Promise<Webhooks> {
@@ -25,13 +25,13 @@ export class WebhooksService {
     async deleteWebhook(id: number): Promise<Webhooks> {
         return this.prisma.webhooks.delete({
             where: { id }
-        })
+        });
     }
 
     async updateWebhook(id: number, url: string): Promise<Webhooks> {
         return this.prisma.webhooks.update({
             data: { url },
             where: { id }
-        })
+        });
     }
 }

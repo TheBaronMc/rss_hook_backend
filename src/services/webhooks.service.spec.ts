@@ -1,9 +1,9 @@
 import { PrismaService } from './prisma.service';
-import { WebhooksService } from './webhooks.service'
+import { WebhooksService } from './webhooks.service';
 
 describe('Webhooks service test', () => {
-    let prisma = new PrismaService();
-    let webhooksService = new WebhooksService(prisma);
+    const prisma = new PrismaService();
+    const webhooksService = new WebhooksService(prisma);
 
     beforeEach(async () => {
         await prisma.webhooks.deleteMany();
@@ -15,16 +15,16 @@ describe('Webhooks service test', () => {
 
     it('Create a webhook', async () => {
         for (let i=1; i<=10; i++) {
-            let url = `url${i}`
-            let created_webhook = await webhooksService.createWebhook(url);
+            const url = `url${i}`;
+            const createdWebhook = await webhooksService.createWebhook(url);
 
             // Returns the created object in the database
-            expect(created_webhook.url).toEqual(url);
+            expect(createdWebhook.url).toEqual(url);
             expect((await prisma.webhooks.findFirst({
-                where: { id: created_webhook.id }
+                where: { id: createdWebhook.id }
              })).url).toEqual(url);
             
-            let webhooks = await prisma.webhooks.findMany();
+             const webhooks = await prisma.webhooks.findMany();
 
             expect(webhooks.length).toEqual(i);
             expect(webhooks.filter(wh => wh.url == url).length).toEqual(1);
@@ -32,11 +32,11 @@ describe('Webhooks service test', () => {
     });
 
     it('Get all webhooks', async () => {
-        let urls: Array<string> = [];
+        const urls: Array<string> = [];
 
         // Add webhooks to the db
         for (let i=1; i<=10; i++) {
-            let url = `url${i}`
+            const url = `url${i}`;
             urls.push(url);
             await prisma.webhooks.create({
                 data: { url }
@@ -44,7 +44,7 @@ describe('Webhooks service test', () => {
         }
 
         // Retrieve all the webhooks from the db
-        let webhooks = await webhooksService.getAllWebhooks();
+        const webhooks = await webhooksService.getAllWebhooks();
 
         // Check the number of webhook
         expect(webhooks.length).toEqual(10);
@@ -52,8 +52,8 @@ describe('Webhooks service test', () => {
         // Check if a webhook haven't been added twice
         expect(webhooks.every((webhook) => {
             return urls.includes(webhook.url) && webhooks.reduce((accum, wh) => {
-                return wh.url == webhook.url ? accum + 1 : accum
-            }, 0) == 1
+                return wh.url == webhook.url ? accum + 1 : accum;
+            }, 0) == 1;
         })).toBeTruthy();
     });
 
@@ -62,7 +62,7 @@ describe('Webhooks service test', () => {
             data: { url: 'url' }
         });
 
-        let webhooks = await prisma.webhooks.findMany();
+        const webhooks = await prisma.webhooks.findMany();
         expect(webhooks.length).toEqual(1);
 
         await webhooksService.deleteWebhook(webhooks[0].id);
@@ -70,20 +70,20 @@ describe('Webhooks service test', () => {
     });
 
     it('Update webhook', async () => {
-        const FIRST_URL = 'url1';
-        const SECOND_URL = 'url2';
+        const firstUrl = 'url1';
+        const secondUrl = 'url2';
 
         // Create the webhook
         await prisma.webhooks.create({
-            data: { url: FIRST_URL }
+            data: { url: firstUrl }
         });
 
-        let webhooks = await prisma.webhooks.findMany();
-        expect(webhooks[0].url).toEqual(FIRST_URL);
+        const webhooks = await prisma.webhooks.findMany();
+        expect(webhooks[0].url).toEqual(firstUrl);
 
         // Update the webhook url value
-        await webhooksService.updateWebhook(webhooks[0].id, SECOND_URL);
-        expect((await prisma.webhooks.findMany())[0].url).toEqual(SECOND_URL);
+        await webhooksService.updateWebhook(webhooks[0].id, secondUrl);
+        expect((await prisma.webhooks.findMany())[0].url).toEqual(secondUrl);
     });
 
 });

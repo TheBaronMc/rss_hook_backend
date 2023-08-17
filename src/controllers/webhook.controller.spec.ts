@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { WebhookController } from './webhook.controller'
-import { FluxService, WebhooksService, HooksService, ArticleService, DeliveryService, PrismaService } from '../services'
+import { WebhookController } from './webhook.controller';
+import { FluxService, WebhooksService, BindingService, ArticleService, DeliveryService, PrismaService } from '../services';
 import { Request } from 'express';
 import { HttpException } from '@nestjs/common';
 
@@ -10,7 +10,7 @@ describe('Webhook Controller', () => {
     let prismaService: PrismaService;
     let fluxService: FluxService;
     let webhookService: WebhooksService;
-    let hooksService: HooksService;
+    let bindingService: BindingService;
     let deliveryService: DeliveryService;
     let articleService: ArticleService;
 
@@ -19,13 +19,13 @@ describe('Webhook Controller', () => {
     beforeAll(async () => {
         app = await Test.createTestingModule({
             controllers: [WebhookController],
-            providers: [WebhooksService, HooksService, DeliveryService, PrismaService],
+            providers: [WebhooksService, BindingService, DeliveryService, PrismaService],
         }).compile();
 
         prismaService = app.get<PrismaService>(PrismaService);
         webhookService = app.get<WebhooksService>(WebhooksService);
         deliveryService = app.get<DeliveryService>(DeliveryService);
-        hooksService = app.get<HooksService>(HooksService);
+        bindingService = app.get<BindingService>(BindingService);
 
         webhookController = app.get<WebhookController>(WebhookController);
 
@@ -36,7 +36,7 @@ describe('Webhook Controller', () => {
     beforeEach(async () => {
         await prismaService.deliveries.deleteMany();
         await prismaService.articles.deleteMany();
-        await prismaService.hooks.deleteMany();
+        await prismaService.bindings.deleteMany();
         await prismaService.flux.deleteMany();
         await prismaService.webhooks.deleteMany();
     });
@@ -44,7 +44,7 @@ describe('Webhook Controller', () => {
     afterAll(async () => {
         await prismaService.deliveries.deleteMany();
         await prismaService.articles.deleteMany();
-        await prismaService.hooks.deleteMany();
+        await prismaService.bindings.deleteMany();
         await prismaService.flux.deleteMany();
         await prismaService.webhooks.deleteMany();
 
@@ -54,7 +54,7 @@ describe('Webhook Controller', () => {
 
     describe('create', () => {
         it('Missing url', async () => {
-            let request = {
+            const request = {
                 body: {}
             } as unknown as Request;
 
@@ -64,29 +64,29 @@ describe('Webhook Controller', () => {
         });
 
         it('Wrong url - bad type', async () => {
-            let request1 = {
+            const firstRequest = {
                 body: {
                     url: 1
                 }
             } as unknown as Request;
 
-            let request2 = {
+            const secondRequest = {
                 body: {
                     url: []
                 }
             } as unknown as Request;
 
-            await expect(webhookController.create(request1))
+            await expect(webhookController.create(firstRequest))
             .rejects
             .toThrow(HttpException);
 
-            await expect(webhookController.create(request2))
+            await expect(webhookController.create(secondRequest))
             .rejects
             .toThrow(HttpException);
         });
 
         it('Wrong url - bad format', async () => {
-            let request = {
+            const request = {
                 body: {
                     url: 'abc'
                 }
@@ -98,7 +98,7 @@ describe('Webhook Controller', () => {
         });
 
         it('Good url', async () => {
-            let request = {
+            const request = {
                 body: {
                     url: 'http://toto.org'
                 }
@@ -109,7 +109,7 @@ describe('Webhook Controller', () => {
         });
 
         it('Register the same url', async () => {
-            let request = {
+            const request = {
                 body: {
                     url: 'http://toto.org'
                 }
@@ -139,7 +139,7 @@ describe('Webhook Controller', () => {
 
     describe('delete', () => {
         it('Empty body', async () => {
-            let request = {
+            const request = {
                 body: {}
             } as unknown as Request;
 
@@ -149,7 +149,7 @@ describe('Webhook Controller', () => {
         });
 
         it('Unknow id', async () => {
-            let request = {
+            const request = {
                 body: {
                     id: -1
                 }
@@ -161,23 +161,21 @@ describe('Webhook Controller', () => {
         });
 
         it('Delete webhook and everything about it', async () => {
-            let webhook = await webhookService.createWebhook('url');
+            const webhook = await webhookService.createWebhook('url');
+            const flux = await fluxService.createFlux('url');
+            const article = await articleService.createArticle('toto', flux.id);
 
-            let flux = await fluxService.createFlux('url');
-
-            let article = await articleService.createArticle('toto', flux.id);
-
-            await hooksService.create_hook(flux.id, webhook.id);
+            await bindingService.createBinding(flux.id, webhook.id);
 
             await deliveryService.createDelevery(webhook.id, article.id);
 
-            let request = {
+            const request = {
                 body: {
                     id: webhook.id
                 }
             } as unknown as Request;
 
-            await webhookController.delete(request)
+            await webhookController.delete(request);
 
             expect((await webhookService.getAllWebhooks()).length)
             .toEqual(0);
@@ -185,14 +183,14 @@ describe('Webhook Controller', () => {
             expect((await deliveryService.getDelevriesTo(webhook.id)).length)
             .toEqual(0);
 
-            expect((await hooksService.get_hooked(webhook.id)).length)
+            expect((await bindingService.getAssociatedFlux(webhook.id)).length)
             .toEqual(0);
         });
     });
 
     describe('update', () => {
         it('Empty body', async () => {
-            let request = {
+            const request = {
                 body: {}
             } as unknown as Request;
 
@@ -202,9 +200,9 @@ describe('Webhook Controller', () => {
         });
 
         it('Missing url', async () => {
-            let webhook = await webhookService.createWebhook('url');
+            const webhook = await webhookService.createWebhook('url');
 
-            let request = {
+            const request = {
                 body: {
                     id: webhook.id
                 }
@@ -216,7 +214,7 @@ describe('Webhook Controller', () => {
         });
 
         it('Missing id', async () => {
-            let request = {
+            const request = {
                 body: {
                     url: 'http://toto.org'
                 }
@@ -228,7 +226,7 @@ describe('Webhook Controller', () => {
         });
 
         it('Wrong id', async () => {
-            let request = {
+            const request = {
                 body: {
                     id: 'abc',
                     url: 'http://toto.org'
@@ -241,7 +239,7 @@ describe('Webhook Controller', () => {
         });
 
         it('Unknow id', async () => {
-            let request = {
+            const request = {
                 body: {
                     id: -1,
                     url: 'http://toto.org'
@@ -254,9 +252,9 @@ describe('Webhook Controller', () => {
         });
 
         it('Bad url', async () => {
-            let webhook = await webhookService.createWebhook('url');
+            const webhook = await webhookService.createWebhook('url');
 
-            let request = {
+            const request = {
                 body: {
                     id: webhook.id,
                     url: 'Not an url'
@@ -269,9 +267,9 @@ describe('Webhook Controller', () => {
         });
 
         it('Good id & good url', async () => {
-            let webhook = await webhookService.createWebhook('url');
+            const webhook = await webhookService.createWebhook('url');
 
-            let request = {
+            const request = {
                 body: {
                     id: webhook.id,
                     url: 'http://toto.fr'

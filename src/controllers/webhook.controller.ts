@@ -1,6 +1,6 @@
 import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, Req } from '@nestjs/common';
 import { WebhooksService } from '../services/webhooks.service';
-import { HooksService } from '../services/hooks.service';
+import { BindingService } from '../services/bindings.service';
 import { DeliveryService } from '../services/deliveries.service';
 
 import { Webhooks, Prisma } from '@prisma/client';
@@ -12,16 +12,15 @@ export class WebhookController {
     private readonly logger = new Logger(WebhookController.name);
 
     constructor(private readonly webhookService: WebhooksService,
-        private readonly hookService: HooksService,
+        private readonly bindingService: BindingService,
         private readonly deliveryService: DeliveryService) {}
 
     @Post()
-    async create(@Req() request: Request) {
+    async create(@Req() request: Request): Promise<Webhooks>  {
         if (!request.body.url) {
             this.logger.debug("Request error - Missing url");
             throw new HttpException('A url is required', HttpStatus.FORBIDDEN);
         }
-            
 
         try {
             new URL(request.body.url);
@@ -30,7 +29,7 @@ export class WebhookController {
             throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
         }
 
-        let webhook;
+        let webhook: Webhooks;
         try {
             webhook = await this.webhookService.createWebhook(request.body.url);
         } catch (error) {
@@ -53,7 +52,7 @@ export class WebhookController {
     }
 
     @Delete()
-    async delete(@Req() request: Request) {
+    async delete(@Req() request: Request): Promise<Webhooks> {
         if (!request.body.id) {
             this.logger.debug("Request error - Missing id");
             throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
@@ -64,24 +63,24 @@ export class WebhookController {
             throw new HttpException('This id does not exist', HttpStatus.FORBIDDEN);
         }
 
-        let id = request.body.id;
+        const id = request.body.id;
 
         // Deleting all deliveries
         await this.deliveryService.deleteDeleveriesTo(id);
 
         // Deleting all hooks
-        let flux = await this.hookService.get_hooked(id);
-        for (let fl of flux)
-            await this.hookService.delete_hook(fl.id, id);
+        const associatedFlux = await this.bindingService.getAssociatedFlux(id);
+        for (const flux of associatedFlux)
+            await this.bindingService.deleteBinding(flux.id, id);
 
-        let webhook = await this.webhookService.deleteWebhook(id);
+        const webhook = await this.webhookService.deleteWebhook(id);
         this.logger.log(`Webhook ${webhook.id} (${webhook.url}) has been deleted`);
 
         return webhook;
     }
 
     @Patch()
-    async update(@Req() request: Request) {
+    async update(@Req() request: Request): Promise<Webhooks> {
         if (!request.body.id) {
             this.logger.debug('Request error - Missing id');
             throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
@@ -91,7 +90,6 @@ export class WebhookController {
             this.logger.debug('Request error - Missing URL');
             throw new HttpException('A url is required', HttpStatus.FORBIDDEN);
         }
-            
 
         try {
             new URL(request.body.url);
@@ -105,7 +103,7 @@ export class WebhookController {
             throw new HttpException('Wrong id', HttpStatus.FORBIDDEN);
         }
         
-        let webhook = await this.webhookService.updateWebhook(request.body.id, request.body.url);
+        const webhook = await this.webhookService.updateWebhook(request.body.id, request.body.url);
         this.logger.log(`Webhook ${webhook.id} updated, new URL: ${webhook.url}`);
 
         return webhook;

@@ -1,6 +1,6 @@
 import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
-import { FluxController } from './flux.controller'
-import { ArticleService, DeliveryService, WebhooksService, HooksService, FluxService, PrismaService } from '../services'
+import { FluxController } from './flux.controller';
+import { ArticleService, DeliveryService, WebhooksService, BindingService, FluxService, PrismaService } from '../services';
 import { Request } from 'express';
 import { HttpException } from '@nestjs/common';
 
@@ -12,20 +12,20 @@ describe('Flux controller tests', () => {
     let fluxService: FluxService;
     let webhookService: WebhooksService;
     let deliveryService: DeliveryService;
-    let hookService: HooksService;
+    let bindingService: BindingService;
 
     let app: TestingModule;
 
     beforeAll(async () => {
         app = await Test.createTestingModule({
             controllers: [FluxController],
-            providers: [FluxService, ArticleService, HooksService, DeliveryService, PrismaService],
+            providers: [FluxService, ArticleService, BindingService, DeliveryService, PrismaService],
         }).compile();
 
         prismaService   = app.get<PrismaService>(PrismaService);
         fluxService     = app.get<FluxService>(FluxService);
         articleService  = app.get<ArticleService>(ArticleService);
-        hookService     = app.get<HooksService>(HooksService);
+        bindingService     = app.get<BindingService>(BindingService);
         deliveryService = app.get<DeliveryService>(DeliveryService);
 
         fluxController  = app.get<FluxController>(FluxController);
@@ -38,7 +38,7 @@ describe('Flux controller tests', () => {
     beforeEach(async () => {
         await prismaService.deliveries.deleteMany();
         await prismaService.articles.deleteMany();
-        await prismaService.hooks.deleteMany();
+        await prismaService.bindings.deleteMany();
         await prismaService.webhooks.deleteMany();
         await prismaService.flux.deleteMany();
     });
@@ -46,16 +46,16 @@ describe('Flux controller tests', () => {
     afterAll(async () => {
         await prismaService.deliveries.deleteMany();
         await prismaService.articles.deleteMany();
-        await prismaService.hooks.deleteMany();
+        await prismaService.bindings.deleteMany();
         await prismaService.webhooks.deleteMany();
         await prismaService.flux.deleteMany();
 
-        await app.close()
+        await app.close();
     });
     
     describe('create', () => {
         it('Missing url', async () => {
-            let request = {
+            const request = {
                 body: {}
             } as unknown as Request;
 
@@ -65,7 +65,7 @@ describe('Flux controller tests', () => {
         });
 
         it('Bad url', async () => {
-            let request = {
+            const request = {
                 body: {
                     url: 'Not an url'
                 }
@@ -77,7 +77,7 @@ describe('Flux controller tests', () => {
         });
 
         it('Good url but not a feed', async () => {
-            let request = {
+            const request = {
                 body: {
                     url: 'http://toto.org'
                 }
@@ -89,7 +89,7 @@ describe('Flux controller tests', () => {
         });
 
         it('Good url and good feed', async () => {
-            let request = {
+            const request = {
                 body: {
                     url: 'https://www.lemonde.fr/sport/rss_full.xml'
                 }
@@ -113,7 +113,7 @@ describe('Flux controller tests', () => {
 
     describe('delete', () => {
         it('Missing id', async () => {
-            let request = {
+            const request = {
                 body: {}
             } as unknown as Request;
 
@@ -123,7 +123,7 @@ describe('Flux controller tests', () => {
         });
 
         it('Wrong id', async () => {
-            let request = {
+            const request = {
                 body: {
                     id: -1
                 }
@@ -135,7 +135,7 @@ describe('Flux controller tests', () => {
         });
 
         it('Unknow id', async () => {
-            let request = {
+            const request = {
                 body: {
                     id: 'abc'
                 }
@@ -147,14 +147,14 @@ describe('Flux controller tests', () => {
         });
 
         it('Remove flux and everything related to it', async () => {
-            let flux = await fluxService.createFlux('url');
-            let webhook = await webhookService.createWebhook('url');
-            let article = await articleService.createArticle('toto', flux.id);
+            const flux = await fluxService.createFlux('url');
+            const webhook = await webhookService.createWebhook('url');
+            const article = await articleService.createArticle('toto', flux.id);
 
-            await hookService.create_hook(flux.id, webhook.id);
+            await bindingService.createBinding(flux.id, webhook.id);
             await deliveryService.createDelevery(webhook.id, article.id);
 
-            let request = {
+            const request = {
                 body: {
                     id: flux.id
                 }
@@ -171,14 +171,14 @@ describe('Flux controller tests', () => {
             expect((await deliveryService.getDelevriesTo(webhook.id)).length)
             .toEqual(0);
 
-            expect((await hookService.get_hooked(webhook.id)).length)
+            expect((await bindingService.getAssociatedFlux(webhook.id)).length)
             .toEqual(0);
         });
     });
 
     describe('update', () => {
         it('Missing id', async () => {
-            let request = {
+            const request = {
                 body: {
                     url: 'http://toto.org'
                 }
@@ -190,9 +190,9 @@ describe('Flux controller tests', () => {
         });
 
         it('Missing url', async () => {
-            let flux = await fluxService.createFlux('url');
+            const flux = await fluxService.createFlux('url');
 
-            let request = {
+            const request = {
                 body: {
                     id: flux.id
                 }
@@ -204,7 +204,7 @@ describe('Flux controller tests', () => {
         });
 
         it('Wrong id', async () => {
-            let request = {
+            const request = {
                 body: {
                     id: 'abc'
                 }
@@ -216,9 +216,9 @@ describe('Flux controller tests', () => {
         });
 
         it('Wrong url', async () => {
-            let flux = await fluxService.createFlux('url');
+            const flux = await fluxService.createFlux('url');
 
-            let request = {
+            const request = {
                 body: {
                     id: flux.id,
                     url: 'Not an url'
@@ -231,7 +231,7 @@ describe('Flux controller tests', () => {
         });
 
         it('Unknow id', async () => {
-            let request = {
+            const request = {
                 body: {
                     id: '-1',
                     url: 'https://www.lemonde.fr/sport/rss_full.xml'
@@ -244,21 +244,21 @@ describe('Flux controller tests', () => {
         });
 
         it('Good id and good url', async () => {
-            const new_url = 'https://www.lemonde.fr/sport/rss_full.xml';
+            const newUrl = 'https://www.lemonde.fr/sport/rss_full.xml';
 
-            let flux = await fluxService.createFlux('url');
+            const flux = await fluxService.createFlux('url');
 
-            let request = {
+            const request = {
                 body: {
                     id: flux.id,
-                    url: new_url
+                    url: newUrl
                 }
             } as unknown as Request;
 
             await fluxController.update(request);
 
             expect((await fluxService.getFlux(flux.id)).url)
-            .toEqual(new_url);
+            .toEqual(newUrl);
         });
     });
 });

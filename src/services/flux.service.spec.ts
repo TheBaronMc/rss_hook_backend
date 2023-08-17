@@ -1,9 +1,9 @@
 import { PrismaService } from './prisma.service';
-import { FluxService } from './flux.service'
+import { FluxService } from './flux.service';
 
 describe('Flux service test', () => {
-    let prisma = new PrismaService();
-    let fluxService = new FluxService(prisma);
+    const prisma = new PrismaService();
+    const fluxService = new FluxService(prisma);
 
     beforeEach(async () => {
         await prisma.flux.deleteMany();
@@ -14,29 +14,41 @@ describe('Flux service test', () => {
     });
 
     it('Create a flux', async () => {
+        expect((await prisma.flux.findMany()).length).toEqual(0);
+
+        const url = 'url';
+        const createdFlux = await fluxService.createFlux(url);
+        expect(createdFlux.url).toEqual(url);
+
+        expect((await prisma.flux.findMany()).length).toEqual(1);
+    });
+
+    it('Create multiple flux', async () => {
+        expect((await prisma.flux.findMany()).length).toEqual(0);
+
         for (let i=1; i<=10; i++) {
-            let url = `url${i}`
-            let created_flux = await fluxService.createFlux(url);
+            const url = `url${i}`;
+            const createdFlux = await fluxService.createFlux(url);
 
             // Returns the created object in the database
-            expect(created_flux.url).toEqual(url);
+            expect(createdFlux.url).toEqual(url);
             expect((await prisma.flux.findFirst({
-                where: { id: created_flux.id }
-             })).url).toEqual(url);
+                where: { id: createdFlux.id }
+            })).url).toEqual(url);
             
-            let flux = await prisma.flux.findMany();
+            const allflux = await prisma.flux.findMany();
 
-            expect(flux.length).toEqual(i);
-            expect(flux.filter(wh => wh.url == url).length).toEqual(1);
+            expect(allflux.length).toEqual(i);
+            expect(allflux.filter(wh => wh.url == url).length).toEqual(1);
         }
     });
 
     it('Get all flux', async () => {
-        let urls: Array<string> = [];
+        const urls: Array<string> = [];
 
         // Add flux to the db
         for (let i=1; i<=10; i++) {
-            let url = `url${i}`
+            const url = `url${i}`;
             urls.push(url);
             await prisma.flux.create({
                 data: { url }
@@ -44,16 +56,16 @@ describe('Flux service test', () => {
         }
 
         // Retrieve all the flux from the db
-        let all_flux = await fluxService.getAllFlux();
+        const allFlux = await fluxService.getAllFlux();
 
         // Check the number of flux
-        expect(all_flux.length).toEqual(10);
+        expect(allFlux.length).toEqual(10);
 
         // Check if a flux haven't been added twice
-        expect(all_flux.every((flux) => {
-            return urls.includes(flux.url) && all_flux.reduce((accum, fl) => {
-                return fl.url == flux.url ? accum + 1 : accum
-            }, 0) == 1
+        expect(allFlux.every((flux) => {
+            return urls.includes(flux.url) && allFlux.reduce((accum, fl) => {
+                return fl.url == flux.url ? accum + 1 : accum;
+            }, 0) == 1;
         })).toBeTruthy();
     });
 
@@ -62,7 +74,7 @@ describe('Flux service test', () => {
             data: { url: 'url' }
         });
 
-        let flux = await prisma.flux.findMany();
+        const flux = await prisma.flux.findMany();
         expect(flux.length).toEqual(1);
 
         await fluxService.deleteFlux(flux[0].id);
@@ -70,20 +82,20 @@ describe('Flux service test', () => {
     });
 
     it('Update flux', async () => {
-        const FIRST_URL = 'url1';
-        const SECOND_URL = 'url2';
+        const firstUrl = 'url1';
+        const secondUrl = 'url2';
 
         // Create the flux
         await prisma.flux.create({
-            data: { url: FIRST_URL }
+            data: { url: firstUrl }
         });
 
-        let flux = await prisma.flux.findMany();
-        expect(flux[0].url).toEqual(FIRST_URL);
+        const flux = await prisma.flux.findMany();
+        expect(flux[0].url).toEqual(firstUrl);
 
         // Update the flux url value
-        await fluxService.updateFlux(flux[0].id, SECOND_URL);
-        expect((await prisma.flux.findMany())[0].url).toEqual(SECOND_URL);
+        await fluxService.updateFlux(flux[0].id, secondUrl);
+        expect((await prisma.flux.findMany())[0].url).toEqual(secondUrl);
     });
 
 });

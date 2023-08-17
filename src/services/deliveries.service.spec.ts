@@ -1,9 +1,9 @@
 import { PrismaService } from './prisma.service';
-import { DeliveryService } from './deliveries.service'
+import { DeliveryService } from './deliveries.service';
 
 describe('Delevery service test', () => {
-    let prisma = new PrismaService();
-    let deliveryService = new DeliveryService(prisma);
+    const prisma = new PrismaService();
+    const deliveryService = new DeliveryService(prisma);
 
     beforeEach(async () => {
         await prisma.deliveries.deleteMany();
@@ -24,16 +24,19 @@ describe('Delevery service test', () => {
     it('Create delivery', async () => {
         expect(await prisma.deliveries.count()).toEqual(0);
 
-        let flux = await prisma.flux.create({ data: { url: 'url'} });
-        let article = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
-        let webhook = await prisma.webhooks.create({ data: { url: 'url' } });
+        const flux = await prisma.flux.create({ data: { url: 'url'} });
+        const article = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
+        const webhook = await prisma.webhooks.create({ data: { url: 'url' } });
 
-        expect(await deliveryService.createDelevery(999, 999)).toBeFalsy();
-        expect(await deliveryService.createDelevery(999, article.id)).toBeFalsy();
-        expect(await deliveryService.createDelevery(webhook.id, 999)).toBeFalsy();
-        expect(await deliveryService.createDelevery(webhook.id, article.id)).toBeTruthy();
+        await expect(deliveryService.createDelevery(999, 999)).rejects.toThrow();
+        await expect(deliveryService.createDelevery(999, article.id)).rejects.toThrow();
+        await expect(deliveryService.createDelevery(webhook.id, 999)).rejects.toThrow();
+        
+        const delivery = await deliveryService.createDelevery(webhook.id, article.id);
+        expect(delivery.contentId).toEqual(article.id);
+        expect(delivery.receiverId).toEqual(webhook.id);
 
-        let deliveries = await prisma.deliveries.findMany();
+        const deliveries = await prisma.deliveries.findMany();
         expect(deliveries.length).toEqual(1);
 
         expect(deliveries[0].contentId).toEqual(article.id);
@@ -41,34 +44,37 @@ describe('Delevery service test', () => {
     });
 
     it('Delete delivery', async () => {
-        let flux = await prisma.flux.create({ data: { url: 'url'} });
-        let article = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
-        let webhook = await prisma.webhooks.create({ data: { url: 'url' } });
+        const flux = await prisma.flux.create({ data: { url: 'url'} });
+        const article = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
+        const webhook = await prisma.webhooks.create({ data: { url: 'url' } });
 
         await prisma.deliveries.create({
             data: {
                 contentId: article.id,
                 receiverId: webhook.id
             }
-        })
+        });
 
         expect(await prisma.deliveries.count()).toEqual(1);
 
-        expect(await deliveryService.deleteDelevery(999, 999)).toBeFalsy();
-        expect(await deliveryService.deleteDelevery(999, article.id)).toBeFalsy();
-        expect(await deliveryService.deleteDelevery(webhook.id, 999)).toBeFalsy();
-        expect(await deliveryService.deleteDelevery(webhook.id, article.id)).toBeTruthy();
+        await expect(deliveryService.deleteDelevery(999, 999)).rejects.toThrow();
+        await expect(deliveryService.deleteDelevery(999, article.id)).rejects.toThrow();
+        await expect(deliveryService.deleteDelevery(webhook.id, 999)).rejects.toThrow();
+
+        const delivery = await deliveryService.deleteDelevery(webhook.id, article.id);
+        expect(delivery.contentId).toEqual(article.id);
+        expect(delivery.receiverId).toEqual(webhook.id);
 
         expect(await prisma.deliveries.count()).toEqual(0);
     });
 
     it('Delete deliveries to a webhook', async () => {
-        let flux = await prisma.flux.create({ data: { url: 'url'} });
-        let webhook1 = await prisma.webhooks.create({ data: { url: 'url1' } });
-        let webhook2 = await prisma.webhooks.create({ data: { url: 'url2' } });
+        const flux = await prisma.flux.create({ data: { url: 'url'} });
+        const webhook1 = await prisma.webhooks.create({ data: { url: 'url1' } });
+        const webhook2 = await prisma.webhooks.create({ data: { url: 'url2' } });
 
         for (let i=0; i<10; i++) {
-            let article = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
+            const article = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
             await prisma.deliveries.create({
                 data: {
                     contentId: article.id,
@@ -83,17 +89,17 @@ describe('Delevery service test', () => {
 
         expect(await prisma.deliveries.count()).toEqual(5);
         
-        for (let delivery of (await prisma.deliveries.findMany()))
+        for (const delivery of (await prisma.deliveries.findMany()))
             expect(delivery.receiverId).toEqual(webhook1.id);
     });
 
     it('Delete deliveries of an article', async () => {
-        let flux = await prisma.flux.create({ data: { url: 'url'} });
-        let article1 = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
-        let article2 = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
+        const flux = await prisma.flux.create({ data: { url: 'url'} });
+        const article1 = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
+        const article2 = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
 
         for (let i=0; i<10; i++) {
-            let webhook = await prisma.webhooks.create({ data: { url: `url${i}` } });
+            const webhook = await prisma.webhooks.create({ data: { url: `url${i}` } });
             await prisma.deliveries.create({
                 data: {
                     contentId: (i%2 == 0) ? article1.id : article2.id,
@@ -108,17 +114,17 @@ describe('Delevery service test', () => {
 
         expect(await prisma.deliveries.count()).toEqual(5);
         
-        for (let delivery of (await prisma.deliveries.findMany()))
+        for (const delivery of (await prisma.deliveries.findMany()))
             expect(delivery.contentId).toEqual(article1.id);
     });
 
     it('Get deliveries received by a webhook', async () => {
-        let flux = await prisma.flux.create({ data: { url: 'url'} });
-        let webhook1 = await prisma.webhooks.create({ data: { url: 'url1' } });
-        let webhook2 = await prisma.webhooks.create({ data: { url: 'url2' } });
+        const flux = await prisma.flux.create({ data: { url: 'url'} });
+        const webhook1 = await prisma.webhooks.create({ data: { url: 'url1' } });
+        const webhook2 = await prisma.webhooks.create({ data: { url: 'url2' } });
 
         for (let i=0; i<10; i++) {
-            let article = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
+            const article = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
             await prisma.deliveries.create({
                 data: {
                     contentId: article.id,
@@ -129,20 +135,20 @@ describe('Delevery service test', () => {
 
         expect(await prisma.deliveries.count()).toEqual(10);
 
-        for (let id of [webhook1.id, webhook2.id]) {
-            let deliveriesWebhook = await deliveryService.getDelevriesTo(id);
+        for (const id of [webhook1.id, webhook2.id]) {
+            const deliveriesWebhook = await deliveryService.getDelevriesTo(id);
 
             expect(deliveriesWebhook.length).toEqual(5);
         }
     });
 
     it('Get deliveries of an article', async () => {
-        let flux = await prisma.flux.create({ data: { url: 'url'} });
-        let article1 = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
-        let article2 = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
+        const flux = await prisma.flux.create({ data: { url: 'url'} });
+        const article1 = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
+        const article2 = await prisma.articles.create({ data: { title: 'article', sourceId: flux.id } });
 
         for (let i=0; i<10; i++) {
-            let webhook = await prisma.webhooks.create({ data: { url: `url${i}` } });
+            const webhook = await prisma.webhooks.create({ data: { url: `url${i}` } });
             await prisma.deliveries.create({
                 data: {
                     contentId: (i%2 == 0) ? article1.id : article2.id,
@@ -153,8 +159,8 @@ describe('Delevery service test', () => {
 
         expect(await prisma.deliveries.count()).toEqual(10);
 
-        for (let id of [article1.id, article2.id]) {
-            let deliveriesWebhook = await deliveryService.getDelevriesOf(id);
+        for (const id of [article1.id, article2.id]) {
+            const deliveriesWebhook = await deliveryService.getDelevriesOf(id);
 
             expect(deliveriesWebhook.length).toEqual(5);
         }

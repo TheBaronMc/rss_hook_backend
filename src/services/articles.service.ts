@@ -19,13 +19,13 @@ export class ArticleService {
      * @param flux_id the id of the rss flux
      * @returns articles
      */
-    async getArticlesSendedBy(flux_id: number): Promise<Articles[]> {
-        return (await this.prisma.articles.findMany(
+    async getArticlesSendedBy(fluxId: number): Promise<Articles[]> {
+        return this.prisma.articles.findMany(
             {
                 where: {
-                    sourceId: flux_id
+                    sourceId: fluxId
                 }
-            }));
+            });
     }
 
     /**
@@ -36,11 +36,11 @@ export class ArticleService {
      * @param url the url where you can find the article
      * @returns the created article
      */
-    async createArticle(title: string, source_id: number, description?: string, url?: string): Promise<Articles> {
+    async createArticle(title: string, sourceId: number, description?: string, url?: string): Promise<Articles> {
         return this.prisma.articles.create({
             data: {
                 title,
-                sourceId: source_id,
+                sourceId,
                 description,
                 url
             }
@@ -52,17 +52,12 @@ export class ArticleService {
      * @param article_id article to delete
      * @returns True if deleted, false otherwise (maybe article doesn't exist)
      */
-    async deleteArticle(article_id: number) {
-        try {
-            await this.prisma.articles.delete({
-                where: {
-                    id: article_id
-                }
-            });
-            return true;
-        } catch {
-            return false;
-        }
+    async deleteArticle(articleId: number): Promise<Articles> {
+        return this.prisma.articles.delete({
+            where: {
+                id: articleId
+            }
+        });
     }
 
 
@@ -71,17 +66,14 @@ export class ArticleService {
      * @param flux_id 
      * @returns 
      */
-    async deleteArticlesOf(flux_id: number) {
-        try {
-            await this.prisma.articles.deleteMany({
-                where: {
-                    sourceId: flux_id
-                }
-            });
-            return true;
-        } catch {
-            return false;
-        }
+    async deleteArticlesOf(fluxId: number): Promise<number> {
+        const result = await this.prisma.articles.deleteMany({
+            where: {
+                sourceId: fluxId
+            }
+        })
+
+        return result.count
     }
 
 }

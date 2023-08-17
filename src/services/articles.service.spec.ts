@@ -2,8 +2,8 @@ import { PrismaService } from './prisma.service';
 import { ArticleService } from './articles.service'
 
 describe('Article service test', () => {
-    let prisma = new PrismaService();
-    let articleService = new ArticleService(prisma);
+    const prisma = new PrismaService();
+    const articleService = new ArticleService(prisma);
 
     beforeEach(async () => {
         await prisma.articles.deleteMany();
@@ -16,63 +16,76 @@ describe('Article service test', () => {
     });
 
     it('Create article', async () => {
-        const articleInfo = {
+        const anArticle = {
             title: 'Toto',
             description: 'Great story!',
             url: 'url'
         }
 
-        let articles = await prisma.articles.findMany();
-        expect(articles.length).toEqual(0);
+        const firstArticleList = await prisma.articles.findMany();
+        expect(firstArticleList.length).toEqual(0);
 
-        let flux = await prisma.flux.create({
+        const flux = await prisma.flux.create({
             data: {
                 url: 'flux'
             }
         });
-        await articleService.createArticle(articleInfo.title, flux.id, articleInfo.description, articleInfo.url);
+        await articleService.createArticle(anArticle.title, flux.id, anArticle.description, anArticle.url);
 
-        articles = await prisma.articles.findMany();
-        expect(articles.length).toEqual(1);
+        const secondArticleList = await prisma.articles.findMany();
+        expect(secondArticleList.length).toEqual(1);
 
-        expect(articles[0].title).toEqual(articleInfo.title);
-        expect(articles[0].description).toEqual(articleInfo.description);
-        expect(articles[0].url).toEqual(articleInfo.url);
-        expect(articles[0].sourceId).toEqual(flux.id);
+        expect(secondArticleList[0].title).toEqual(anArticle.title);
+        expect(secondArticleList[0].description).toEqual(anArticle.description);
+        expect(secondArticleList[0].url).toEqual(anArticle.url);
+        expect(secondArticleList[0].sourceId).toEqual(flux.id);
     });
 
-    it('Get all articles', async () => {
-        let flux = await prisma.flux.create({
+    it('Get all articles - single flux', async () => {
+        const flux = await prisma.flux.create({
             data: {
                 url: 'flux'
             }
         });
 
-        let articles = await articleService.getArticles();
-        expect(articles.length).toEqual(0);
+        const articleListBeforAdd = await articleService.getArticles();
+        expect(articleListBeforAdd.length).toEqual(0);
 
-        for (let i = 1; i<10; i++) {
+        const nbArticles = 10;
+        const artcileTemplate = {
+            description: 'Great story!',
+            url: 'url',
+            sourceId: flux.id
+        };
+        const validation = []
+        for (let i = 0; i<nbArticles; i++) {
             await prisma.articles.create({
                 data: {
-                    title: 'toto',
-                    description: 'Great story!',
-                    url: 'url',
-                    sourceId: flux.id
+                    title: `${i}`,
+                    ...artcileTemplate
                 }
             });
-            articles = await articleService.getArticles();
-            expect(articles.length).toEqual(i);
+            validation.push(false);
         }
-            
+
+        const articleListAfterAdd = await articleService.getArticles();
+        expect(articleListAfterAdd.length).toEqual(nbArticles);
+
+        // Verifiy all articles are present
+        articleListAfterAdd.forEach(article => {
+            validation[parseInt(article.title)] = true;
+        });
+        expect(validation.reduce((accum, isValidate) => accum && isValidate, true))
+        .toBeTruthy();
     });
 
-    it('Get all articles', async () => {
-        let flux1 = await prisma.flux.create({
+    it('Get all articles - multiple flux', async () => {
+        const firstFlux = await prisma.flux.create({
             data: {
                 url: 'flux1'
             }
         });
-        let flux2 = await prisma.flux.create({
+        const secondFlux = await prisma.flux.create({
             data: {
                 url: 'flux2'
             }
@@ -85,25 +98,25 @@ describe('Article service test', () => {
                     title: 'toto',
                     description: 'Great story!',
                     url: 'url',
-                    sourceId: coin ? flux1.id : flux2.id
+                    sourceId: coin ? firstFlux.id : secondFlux.id
                 }
             });
-            coin = coin ? false : true;
+            coin = !coin;
         }
 
-        let articles_flux1 = await articleService.getArticlesSendedBy(flux1.id);
-        expect(articles_flux1.length).toEqual(5);
-        for (let article of articles_flux1)
-            expect(article.sourceId).toEqual(flux1.id);
+        const firstFluxArticles = await articleService.getArticlesSendedBy(firstFlux.id);
+        expect(firstFluxArticles.length).toEqual(5);
+        expect(firstFluxArticles.reduce((accum, article) => accum && (article.sourceId == firstFlux.id), true))
+        .toBeTruthy()
         
-        let articles_flux2 = await articleService.getArticlesSendedBy(flux2.id);
-        expect(articles_flux2.length).toEqual(5);
-        for (let article of articles_flux2)
-            expect(article.sourceId).toEqual(flux2.id)
+        const seccondFluxArticles = await articleService.getArticlesSendedBy(secondFlux.id);
+        expect(seccondFluxArticles.length).toEqual(5);
+        expect(seccondFluxArticles.reduce((accum, article) => accum && (article.sourceId == secondFlux.id), true))
+        .toBeTruthy()
     });
 
     it('Delete article', async () => {
-        let flux = await prisma.flux.create({
+        const flux = await prisma.flux.create({
             data: {
                 url: 'flux'
             }
@@ -117,13 +130,13 @@ describe('Article service test', () => {
             }
         });
 
-        let articles = await prisma.articles.findMany();
-        expect(articles.length).toEqual(1);
+        const articleListBeforeDelete = await prisma.articles.findMany();
+        expect(articleListBeforeDelete.length).toEqual(1);
 
-        await articleService.deleteArticle(articles[0].id);
+        await articleService.deleteArticle(articleListBeforeDelete[0].id);
 
-        articles = await prisma.articles.findMany();
-        expect(articles.length).toEqual(0);
+        const articleListAfterDelete = await prisma.articles.findMany();
+        expect(articleListAfterDelete.length).toEqual(0);
     });
 
 });
