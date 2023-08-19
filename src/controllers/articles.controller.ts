@@ -1,10 +1,10 @@
-import { Controller, Get, HttpException, HttpStatus, Req, UseFilters } from '@nestjs/common';
+import { Controller, Get, Param, UseFilters } from '@nestjs/common';
 import { ArticleService } from '../services/articles.service';
 import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter';
 
 import { Articles } from '@prisma/client';
 
-import { Request } from 'express';
+import { GetArticleDto } from '../dataTranferObjects/article.dto';
 
 @Controller('articles')
 @UseFilters(PrismaClientKnownRequestErrorFilter)
@@ -17,16 +17,9 @@ export class ArticleController {
         return this.articleService.getArticles();
     }
 
-    @Get('flux')
-    async getAllByFlux(@Req() request: Request): Promise<Articles[]> {
-        if (!request.query.id)
-            throw new HttpException('An flux id is required', HttpStatus.FORBIDDEN);
-    
-        const id = parseInt(request.query.id as string);
-        if (isNaN(id))
-            throw new HttpException('A Flux id must a number', HttpStatus.FORBIDDEN);
-
-        return this.articleService.getArticlesSendedBy(id);
+    @Get('flux/:id')
+    async getAllByFlux(@Param() getArticleDto: GetArticleDto): Promise<Articles[]> {
+        return this.articleService.getArticlesSendedBy(getArticleDto.id);
     }
 
 }

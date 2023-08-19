@@ -1,3 +1,4 @@
+import { NotFoundError } from '@prisma/client/runtime';
 import { PrismaService } from './prisma.service';
 import { WebhooksService } from './webhooks.service';
 
@@ -29,6 +30,25 @@ describe('Webhooks service test', () => {
             expect(webhooks.length).toEqual(i);
             expect(webhooks.filter(wh => wh.url == url).length).toEqual(1);
         }
+    });
+
+    describe('Get', () => {
+        it('Unkown id', async () => {
+            await expect(webhooksService.getWebhook(1))
+            .rejects
+            .toThrow(NotFoundError);
+        });
+
+        it('Kown id', async () => {
+            const aUrl = 'url';
+
+            const createdWebhook = await prisma.webhooks.create({
+                data: { url: aUrl }
+            });
+
+            const aWebhook = await webhooksService.getWebhook(createdWebhook.id);
+            expect(aWebhook).toEqual(createdWebhook);
+        });
     });
 
     it('Get all webhooks', async () => {

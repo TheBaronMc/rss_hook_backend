@@ -1,20 +1,23 @@
-import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, Req, OnModuleDestroy, UseFilters } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, OnModuleDestroy, UseFilters, Body, Param } from '@nestjs/common';
 import { FluxService } from '../services/flux.service';
 import { BindingService } from '../services/bindings.service';
 import { DeliveryService } from '../services/deliveries.service';
 import { ArticleService } from '../services/articles.service';
 import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter';
 
-import { Flux, Prisma } from '@prisma/client';
-
-import { Request } from 'express';
+import { Flux } from '@prisma/client';
 
 import RssFeedEmitter = require('rss-feed-emitter');
 import { XMLParser } from 'fast-xml-parser';
 import axios from 'axios';
+import { CreateFluxDto, DeleteFluxDto, GetFluxDto, UpdateFluxDto } from '../dataTranferObjects/flux.dto';
+import { NotFoundErrorFilter } from '../exceptionFilters/not-found-error.filter';
 
 @Controller('flux')
-@UseFilters(PrismaClientKnownRequestErrorFilter)
+@UseFilters(
+    PrismaClientKnownRequestErrorFilter,
+    NotFoundErrorFilter
+)
 export class FluxController implements OnModuleDestroy {
     private readonly logger = new Logger(FluxController.name);
 
@@ -26,22 +29,9 @@ export class FluxController implements OnModuleDestroy {
         private readonly articleService: ArticleService) {}
 
     @Post()
-    async create(@Req() request: Request): Promise<Flux> {
-        if (!request.body.url) {
-            this.logger.debug('Request error - No URL');
-            throw new HttpException('A url is required', HttpStatus.FORBIDDEN);
-        }
-
-        // Url format check
-        try {
-            new URL(request.body.url);
-        } catch {
-            this.logger.debug(`Request error - ${request.body.url} not a url`);
-            throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
-        }
-
+    async create(@Body() createFluxDto: CreateFluxDto): Promise<Flux> {
         // Is feed valid
-        const response = await axios.get(request.body.url);
+        const response = await axios.get(createFluxDto.url);
         const parser = new XMLParser({
             ignoreAttributes: false,
             alwaysCreateTextNode: true,
@@ -54,26 +44,15 @@ export class FluxController implements OnModuleDestroy {
         const root = feed['rss'];
         if (root) {
             if (root['@_version'] != 2.0) {
-                this.logger.debug(`Request error - ${request.body.url} is an invalid feed`);
+                this.logger.debug(`Request error - ${createFluxDto.url} is an invalid feed`);
                 throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
             }
         } else {
-            this.logger.debug(`Request error - ${request.body.url} is an invalid feed`);
+            this.logger.debug(`Request error - ${createFluxDto.url} is an invalid feed`);
             throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
         }
 
-        let flux: Flux;
-        try {
-            flux = await this.fluxService.createFlux(request.body.url);
-        } catch (error) {
-            if (error instanceof Prisma.PrismaClientKnownRequestError) {
-                if (error.code === 'P2002') {
-                    this.logger.debug(`Request error - ${request.body.url} is already registered`);
-                    throw new HttpException('This URL is already registered', HttpStatus.FORBIDDEN);
-                }
-            }
-        }
-
+        const flux: Flux = await this.fluxService.createFlux(createFluxDto.url);
 
         const event = `flux${flux.id}`;
         this.feeder.add({
@@ -86,6 +65,11 @@ export class FluxController implements OnModuleDestroy {
         
         return flux;
     }
+
+    @Get(':id')
+    async getFlux(@Param() getFluxDto: GetFluxDto): Promise<Flux> {
+        return this.fluxService.getFlux(getFluxDto.id);
+    }
     
     @Get()
     async getAll(): Promise<Flux[]> {
@@ -93,22 +77,8 @@ export class FluxController implements OnModuleDestroy {
     }
 
     @Delete()
-    async delete(@Req() request: Request): Promise<Flux> {
-        if (!request.body.id) {
-            this.logger.debug('Request error - No id');
-            throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
-        }
-
-        const fluxId: number = parseInt(request.body.id);
-        if (isNaN(fluxId)) {
-            this.logger.debug('Request error - Id must be a number');
-            throw new HttpException('Flux id has to be a number', HttpStatus.FORBIDDEN);
-        }
-
-        if (!await this.exist(fluxId)) {
-            this.logger.debug(`Request error - ${fluxId} doesn't exists`);
-            throw new HttpException('This id doesn\'t exist', HttpStatus.FORBIDDEN);
-        }
+    async delete(@Body() deleteFluxDto: DeleteFluxDto): Promise<Flux> {
+        const fluxId = deleteFluxDto.id;
         
         // Removing all hooks
         const hooks = await this.bindingService.getAssociatedWebhooks(fluxId);
@@ -132,41 +102,17 @@ export class FluxController implements OnModuleDestroy {
     }
 
     @Patch()
-    async update(@Req() request: Request): Promise<Flux> {
-        if (!request.body.id) {
-            this.logger.debug(`Missiing id`);
-            throw new HttpException('Missing id', HttpStatus.FORBIDDEN);
-        }
-        if (!request.body.url) {
-            this.logger.debug(`Missiing url`);
-            throw new HttpException('Missing url', HttpStatus.FORBIDDEN);
-        }
-
-        if (!await this.exist(request.body.id)) {
-            this.logger.debug(`Wrond id`);
-            throw new HttpException('Wrong id', HttpStatus.FORBIDDEN);
-        }
-
-        try {
-            new URL(request.body.url);
-        } catch {
-            throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
-        }
-
-        const oldFlux = await this.fluxService.getFlux(request.body.id);
+    async update(@Body() updateFluxDto: UpdateFluxDto): Promise<Flux> {
+        const oldFlux = await this.fluxService.getFlux(updateFluxDto.id);
 
         this.feeder.remove(oldFlux.url);
         this.feeder.add({
-            url: request.body.url,
+            url: updateFluxDto.url,
             refresh: 2000,
             eventName: `flux${oldFlux.id}`
         });
 
-        return await this.fluxService.updateFlux(request.body.id, request.body.url);
-    }
-
-    private async exist(id: number): Promise<boolean> {
-        return (await this.getAll()).some(flux => flux.id == id);
+        return this.fluxService.updateFlux(updateFluxDto.id, updateFluxDto.url);
     }
 
     private onNewItem(flux: Flux) {

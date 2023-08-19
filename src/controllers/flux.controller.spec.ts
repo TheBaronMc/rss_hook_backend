@@ -1,8 +1,9 @@
-import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { FluxController } from './flux.controller';
 import { ArticleService, DeliveryService, WebhooksService, BindingService, FluxService, PrismaService } from '../services';
-import { Request } from 'express';
 import { HttpException } from '@nestjs/common';
+import { CreateFluxDto, DeleteFluxDto, UpdateFluxDto } from '../dataTranferObjects/flux.dto';
+import { NotFoundError, PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
 describe('Flux controller tests', () => {
     let fluxController: FluxController;
@@ -54,49 +55,24 @@ describe('Flux controller tests', () => {
     });
     
     describe('create', () => {
-        it('Missing url', async () => {
-            const request = {
-                body: {}
-            } as unknown as Request;
-
-            await expect(fluxController.update(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
-        it('Bad url', async () => {
-            const request = {
-                body: {
-                    url: 'Not an url'
-                }
-            } as unknown as Request;
-
-            await expect(fluxController.update(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
         it('Good url but not a feed', async () => {
-            const request = {
-                body: {
-                    url: 'http://toto.org'
-                }
-            } as unknown as Request;
+            const aCreateFluxDto = new CreateFluxDto();
+            aCreateFluxDto.url = 'http://toto.org';
 
-            await expect(fluxController.create(request))
+            await expect(fluxController.create(aCreateFluxDto))
             .rejects
             .toThrow(HttpException);
         });
 
         it('Good url and good feed', async () => {
-            const request = {
-                body: {
-                    url: 'https://www.lemonde.fr/sport/rss_full.xml'
-                }
-            } as unknown as Request;
+            const aUrl = 'https://www.lemonde.fr/sport/rss_full.xml';
+            const aCreateFluxDto = new CreateFluxDto();
+            aCreateFluxDto.url = aUrl;
 
-            expect(await fluxController.create(request))
-            .toEqual((await fluxService.getAllFlux())[0]);
+            const createdFlux = await fluxController.create(aCreateFluxDto);
+
+            expect(createdFlux.url)
+            .toEqual(aUrl);
         });
     });
 
@@ -112,38 +88,13 @@ describe('Flux controller tests', () => {
     });
 
     describe('delete', () => {
-        it('Missing id', async () => {
-            const request = {
-                body: {}
-            } as unknown as Request;
-
-            await expect(fluxController.delete(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
-        it('Wrong id', async () => {
-            const request = {
-                body: {
-                    id: -1
-                }
-            } as unknown as Request;
-
-            await expect(fluxController.delete(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
         it('Unknow id', async () => {
-            const request = {
-                body: {
-                    id: 'abc'
-                }
-            } as unknown as Request;
+            const aDeleteFluxDto = new DeleteFluxDto();
+            aDeleteFluxDto.id = 1;
 
-            await expect(fluxController.delete(request))
+            await expect(fluxController.delete(aDeleteFluxDto))
             .rejects
-            .toThrow(HttpException);
+            .toThrow(PrismaClientKnownRequestError);
         });
 
         it('Remove flux and everything related to it', async () => {
@@ -154,13 +105,10 @@ describe('Flux controller tests', () => {
             await bindingService.createBinding(flux.id, webhook.id);
             await deliveryService.createDelevery(webhook.id, article.id);
 
-            const request = {
-                body: {
-                    id: flux.id
-                }
-            } as unknown as Request;
+            const aDeleteFluxDto = new DeleteFluxDto();
+            aDeleteFluxDto.id = flux.id;
 
-            await fluxController.delete(request);
+            await fluxController.delete(aDeleteFluxDto);
 
             expect((await fluxService.getAllFlux()).length)
             .toEqual(0);
@@ -177,70 +125,14 @@ describe('Flux controller tests', () => {
     });
 
     describe('update', () => {
-        it('Missing id', async () => {
-            const request = {
-                body: {
-                    url: 'http://toto.org'
-                }
-            } as unknown as Request;
-
-            await expect(fluxController.update(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
-        it('Missing url', async () => {
-            const flux = await fluxService.createFlux('url');
-
-            const request = {
-                body: {
-                    id: flux.id
-                }
-            } as unknown as Request;
-
-            await expect(fluxController.update(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
-        it('Wrong id', async () => {
-            const request = {
-                body: {
-                    id: 'abc'
-                }
-            } as unknown as Request;
-
-            await expect(fluxController.update(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
-        it('Wrong url', async () => {
-            const flux = await fluxService.createFlux('url');
-
-            const request = {
-                body: {
-                    id: flux.id,
-                    url: 'Not an url'
-                }
-            } as unknown as Request;
-
-            await expect(fluxController.update(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
         it('Unknow id', async () => {
-            const request = {
-                body: {
-                    id: '-1',
-                    url: 'https://www.lemonde.fr/sport/rss_full.xml'
-                }
-            } as unknown as Request;
+            const updateFluxDto = new UpdateFluxDto();
+            updateFluxDto.id = 1;
+            updateFluxDto.url = 'https://www.lemonde.fr/sport/rss_full.xml';
 
-            await expect(fluxController.update(request))
+            await expect(fluxController.update(updateFluxDto))
             .rejects
-            .toThrow(HttpException);
+            .toThrow(NotFoundError);
         });
 
         it('Good id and good url', async () => {
@@ -248,14 +140,11 @@ describe('Flux controller tests', () => {
 
             const flux = await fluxService.createFlux('url');
 
-            const request = {
-                body: {
-                    id: flux.id,
-                    url: newUrl
-                }
-            } as unknown as Request;
+            const updateFluxDto = new UpdateFluxDto();
+            updateFluxDto.id = flux.id;
+            updateFluxDto.url = newUrl;
 
-            await fluxController.update(request);
+            await fluxController.update(updateFluxDto);
 
             expect((await fluxService.getFlux(flux.id)).url)
             .toEqual(newUrl);

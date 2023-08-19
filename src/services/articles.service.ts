@@ -71,9 +71,9 @@ export class ArticleService {
             where: {
                 sourceId: fluxId
             }
-        })
+        });
 
-        return result.count
+        return result.count;
     }
 
 }

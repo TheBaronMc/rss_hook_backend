@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { WebhookController } from './webhook.controller';
 import { FluxService, WebhooksService, BindingService, ArticleService, DeliveryService, PrismaService } from '../services';
-import { Request } from 'express';
 import { HttpException } from '@nestjs/common';
+import { CreateWebhookDto, DeleteWebhookDto, GetWebhookDto, UpdateWebhookDto } from '../dataTranferObjects/webhook.dto';
+import { NotFoundError, PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
 describe('Webhook Controller', () => {
     let webhookController: WebhookController;
@@ -53,73 +54,36 @@ describe('Webhook Controller', () => {
 
 
     describe('create', () => {
-        it('Missing url', async () => {
-            const request = {
-                body: {}
-            } as unknown as Request;
+        it('Wrong url format', async () => {
+            const createWebhookDto = new CreateWebhookDto();
+            createWebhookDto.url = 'NotAUrl';
 
-            await expect(webhookController.create(request))
+            await expect(webhookController.create(createWebhookDto))
             .rejects
             .toThrow(HttpException);
         });
 
-        it('Wrong url - bad type', async () => {
-            const firstRequest = {
-                body: {
-                    url: 1
-                }
-            } as unknown as Request;
+        it('Good url format', async () => {
+            const url = 'http://toto.org';
 
-            const secondRequest = {
-                body: {
-                    url: []
-                }
-            } as unknown as Request;
+            const createWebhookDto = new CreateWebhookDto();
+            createWebhookDto.url = url;
 
-            await expect(webhookController.create(firstRequest))
-            .rejects
-            .toThrow(HttpException);
-
-            await expect(webhookController.create(secondRequest))
-            .rejects
-            .toThrow(HttpException);
-        });
-
-        it('Wrong url - bad format', async () => {
-            const request = {
-                body: {
-                    url: 'abc'
-                }
-            } as unknown as Request;
-
-            await expect(webhookController.create(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
-        it('Good url', async () => {
-            const request = {
-                body: {
-                    url: 'http://toto.org'
-                }
-            } as unknown as Request;
-
-            expect(await webhookController.create(request))
-            .toEqual((await webhookService.getAllWebhooks())[0]);            
+            const createdWebhook = await webhookController.create(createWebhookDto);
+            expect(createdWebhook.url).toEqual(url);          
         });
 
         it('Register the same url', async () => {
-            const request = {
-                body: {
-                    url: 'http://toto.org'
-                }
-            } as unknown as Request;
+            const url = 'http://toto.org';
 
-            await webhookController.create(request);
+            const createWebhookDto = new CreateWebhookDto();
+            createWebhookDto.url = url;
+
+            await webhookController.create(createWebhookDto);
             
-            await expect(webhookController.create(request))
+            await expect(webhookController.create(createWebhookDto))
             .rejects
-            .toThrow(HttpException);
+            .toThrow(PrismaClientKnownRequestError);
         });
     });
 
@@ -137,29 +101,30 @@ describe('Webhook Controller', () => {
         });
     });
 
-    describe('delete', () => {
-        it('Empty body', async () => {
-            const request = {
-                body: {}
-            } as unknown as Request;
-
-            await expect(webhookController.delete(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
+    describe('get', () => {
         it('Unknow id', async () => {
-            const request = {
-                body: {
-                    id: -1
-                }
-            } as unknown as Request;
+            const getWebhookDto = new GetWebhookDto();
+            getWebhookDto.id = 1;
 
-            await expect(webhookController.delete(request))
+            await expect(webhookController.getWebhook(getWebhookDto))
             .rejects
-            .toThrow(HttpException);
+            .toThrow(NotFoundError);
         });
 
+        it('Good id', async () => {
+            const aUrl = 'url';
+            const aCreatedWebhook = await webhookService.createWebhook(aUrl);
+
+            const getWebhookDto = new GetWebhookDto();
+            getWebhookDto.id = aCreatedWebhook.id;
+
+            const aWebhook = await webhookController.getWebhook(getWebhookDto);
+            expect(aWebhook.id)
+            .toEqual(aCreatedWebhook.id);
+        });
+    });
+
+    describe('delete', () => {
         it('Delete webhook and everything about it', async () => {
             const webhook = await webhookService.createWebhook('url');
             const flux = await fluxService.createFlux('url');
@@ -169,13 +134,9 @@ describe('Webhook Controller', () => {
 
             await deliveryService.createDelevery(webhook.id, article.id);
 
-            const request = {
-                body: {
-                    id: webhook.id
-                }
-            } as unknown as Request;
-
-            await webhookController.delete(request);
+            const deleteWebhookDto = new DeleteWebhookDto();
+            deleteWebhookDto.id = webhook.id;
+            await webhookController.delete(deleteWebhookDto);
 
             expect((await webhookService.getAllWebhooks()).length)
             .toEqual(0);
@@ -189,95 +150,24 @@ describe('Webhook Controller', () => {
     });
 
     describe('update', () => {
-        it('Empty body', async () => {
-            const request = {
-                body: {}
-            } as unknown as Request;
-
-            await expect(webhookController.update(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
-        it('Missing url', async () => {
-            const webhook = await webhookService.createWebhook('url');
-
-            const request = {
-                body: {
-                    id: webhook.id
-                }
-            } as unknown as Request;
-
-            await expect(webhookController.update(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
-        it('Missing id', async () => {
-            const request = {
-                body: {
-                    url: 'http://toto.org'
-                }
-            } as unknown as Request;
-
-            await expect(webhookController.update(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
-        it('Wrong id', async () => {
-            const request = {
-                body: {
-                    id: 'abc',
-                    url: 'http://toto.org'
-                }
-            } as unknown as Request;
-
-            await expect(webhookController.update(request))
-            .rejects
-            .toThrow(HttpException);
-        });
-
         it('Unknow id', async () => {
-            const request = {
-                body: {
-                    id: -1,
-                    url: 'http://toto.org'
-                }
-            } as unknown as Request;
+            const updateWebhookDto = new UpdateWebhookDto();
+            updateWebhookDto.id = 9999;
+            updateWebhookDto.url = 'http://toto.org';
 
-            await expect(webhookController.update(request))
+            await expect(webhookController.update(updateWebhookDto))
             .rejects
-            .toThrow(HttpException);
-        });
-
-        it('Bad url', async () => {
-            const webhook = await webhookService.createWebhook('url');
-
-            const request = {
-                body: {
-                    id: webhook.id,
-                    url: 'Not an url'
-                }
-            } as unknown as Request;
-
-            await expect(webhookController.update(request))
-            .rejects
-            .toThrow(HttpException);
+            .toThrow(PrismaClientKnownRequestError);
         });
 
         it('Good id & good url', async () => {
             const webhook = await webhookService.createWebhook('url');
 
-            const request = {
-                body: {
-                    id: webhook.id,
-                    url: 'http://toto.fr'
-                }
-            } as unknown as Request;
+            const updateWebhookDto = new UpdateWebhookDto();
+            updateWebhookDto.id = webhook.id;
+            updateWebhookDto.url = 'http://toto.org';
 
-            expect(await webhookController.update(request))
-            .toBeTruthy();
+            await webhookController.update(updateWebhookDto);
         });
     });
 

@@ -1,93 +1,35 @@
-import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Post, Req, NotFoundException, UseFilters } from '@nestjs/common';
+import { Controller, Delete, Get, Post, UseFilters, Body, Param } from '@nestjs/common';
 import { BindingService } from '../services/bindings.service';
-import { WebhooksService } from '../services/webhooks.service';
-import { FluxService } from '../services/flux.service';
 import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter';
 
 import { Webhooks, Flux, Bindings } from '@prisma/client';
 
-import { Request } from 'express';
+import { CreateBindingDto, DeleteBindingDto, GetFluxBindingsDto, GetWebhookBindingsDto } from '../dataTranferObjects/binding.dto';
 
 @Controller('hooks')
 @UseFilters(PrismaClientKnownRequestErrorFilter)
 export class BindingsController {
-    private readonly logger = new Logger(BindingsController.name);
 
-    constructor(private readonly bindingService: BindingService,
-        private readonly webhookService: WebhooksService,
-        private readonly fluxService: FluxService) {}
+    constructor(private readonly bindingService: BindingService) {}
 
     @Post()
-    async createBinding(@Req() request: Request): Promise<Bindings> {
-        if (!request.body.fluxId) {
-            this.logger.debug('Request error - No flux ID');
-            throw new HttpException('A flux id is required', HttpStatus.FORBIDDEN);
-        }
-        if (!request.body.webhookId) {
-            this.logger.debug('Request error - No webhook ID');
-            throw new HttpException('A webhook is required', HttpStatus.FORBIDDEN);
-        }
-
-        try {
-            const res = await this.bindingService.createBinding(request.body.fluxId, request.body.webhookId);
-            if (res) {
-                this.logger.log(`Hook created between flux ${request.body.fluxId} and webhook ${request.body.webhookId}`);
-            } else {
-                this.logger.log(`Hook already exists between flux ${request.body.fluxId} and webhook ${request.body.webhookId}`);
-            }
-
-            return res;
-        } catch (error) {
-            if (error) {
-                throw new NotFoundException();
-            }
-        }
+    async createBinding(@Body() createBindingDto: CreateBindingDto): Promise<Bindings> {
+        return this.bindingService.createBinding(createBindingDto.fluxId, createBindingDto.webhookId);
     }
     
-    @Get('webhook')
-    async getAllFluxAttached(@Req() request: Request): Promise<Flux[]> {
-        if (!request.query.id)
-            throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
-
-        const id = parseInt(request.query.id as string);
-        if (isNaN(id) || !(await this.webhookExist(id)))
-            throw new HttpException('This webhook id doesn\'t exist', HttpStatus.FORBIDDEN);
-
-        return this.bindingService.getAssociatedFlux(id);
+    @Get('webhook/:id')
+    async getAllFluxAttached(@Param() getFluxBindingsDto: GetFluxBindingsDto): Promise<Flux[]> {
+        return this.bindingService.getAssociatedFlux(getFluxBindingsDto.id);
     }
 
-    @Get('flux')
-    async getAssociatedWebhooks(@Req() request: Request): Promise<Webhooks[]> {
-        if (!request.query.id)
-            throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
-
-        const id = parseInt(request.query.id as string);
-        if (isNaN(id) || !(await this.fluxExist(id)))
-            throw new HttpException('This flux id doesn\'t exist', HttpStatus.FORBIDDEN);
-
-        return this.bindingService.getAssociatedWebhooks(id);
+    @Get('flux/:id')
+    async getAssociatedWebhooks(@Param() getWebhookBindingsDto: GetWebhookBindingsDto): Promise<Webhooks[]> {
+        return this.bindingService.getAssociatedWebhooks(getWebhookBindingsDto.id);
     }
 
     @Delete()
-    async delete(@Req() request: Request): Promise<Bindings> {
-        if (!request.body.fluxId)
-            throw new HttpException('A flux id is required', HttpStatus.FORBIDDEN);
-        if (!request.body.webhookId)
-            throw new HttpException('A webhook is required', HttpStatus.FORBIDDEN);
-
-        if (!(await this.fluxExist(request.body.fluxId)))
-            throw new HttpException('This flux id doesn\'t exist', HttpStatus.FORBIDDEN);
-        if (!(await this.webhookExist(request.body.webhookId)))
-            throw new HttpException('This webhook id doesn\'t exist', HttpStatus.FORBIDDEN);
-
-        return this.bindingService.deleteBinding(request.body.fluxId, request.body.webhookId);
+    async delete(@Body() deleteBindingDto: DeleteBindingDto): Promise<Bindings> {
+        return this.bindingService.deleteBinding(deleteBindingDto.fluxId, deleteBindingDto.webhookId);
     }
 
-    private async webhookExist(id: number): Promise<boolean> {
-        return (await this.webhookService.getAllWebhooks()).some(wh => wh.id == id);
-    }
-
-    private async fluxExist(id: number): Promise<boolean> {
-        return (await this.fluxService.getAllFlux()).some(fl => fl.id == id);
-    }
 }

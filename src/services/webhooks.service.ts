@@ -11,7 +11,7 @@ export class WebhooksService {
     }
 
     async getWebhook(id: number): Promise<Webhooks> {
-        return this.prisma.webhooks.findFirst({
+        return this.prisma.webhooks.findUniqueOrThrow({
             where: { id }
         });
     }

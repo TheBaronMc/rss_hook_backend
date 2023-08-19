@@ -1,5 +1,6 @@
 import { PrismaService } from './prisma.service';
 import { FluxService } from './flux.service';
+import { NotFoundError } from '@prisma/client/runtime';
 
 describe('Flux service test', () => {
     const prisma = new PrismaService();
@@ -41,6 +42,25 @@ describe('Flux service test', () => {
             expect(allflux.length).toEqual(i);
             expect(allflux.filter(wh => wh.url == url).length).toEqual(1);
         }
+    });
+
+    describe('Get', () => {
+        it('Unkown id', async () => {
+            await expect(fluxService.getFlux(1))
+            .rejects
+            .toThrow(NotFoundError);
+        });
+
+        it('Kown id', async () => {
+            const aUrl = 'url';
+
+            const createdFlux = await prisma.flux.create({
+                data: { url: aUrl }
+            });
+
+            const aFlux = await fluxService.getFlux(createdFlux.id);
+            expect(aFlux).toEqual(createdFlux);
+        });
     });
 
     it('Get all flux', async () => {

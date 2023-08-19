@@ -1,5 +1,5 @@
 import { PrismaService } from './prisma.service';
-import { ArticleService } from './articles.service'
+import { ArticleService } from './articles.service';
 
 describe('Article service test', () => {
     const prisma = new PrismaService();
@@ -20,7 +20,7 @@ describe('Article service test', () => {
             title: 'Toto',
             description: 'Great story!',
             url: 'url'
-        }
+        };
 
         const firstArticleList = await prisma.articles.findMany();
         expect(firstArticleList.length).toEqual(0);
@@ -57,7 +57,7 @@ describe('Article service test', () => {
             url: 'url',
             sourceId: flux.id
         };
-        const validation = []
+        const validation = [];
         for (let i = 0; i<nbArticles; i++) {
             await prisma.articles.create({
                 data: {
@@ -91,7 +91,7 @@ describe('Article service test', () => {
             }
         });
 
-        let coin = true
+        let coin = true;
         for (let i = 0; i<10; i++) {
             await prisma.articles.create({
                 data: {
@@ -107,12 +107,12 @@ describe('Article service test', () => {
         const firstFluxArticles = await articleService.getArticlesSendedBy(firstFlux.id);
         expect(firstFluxArticles.length).toEqual(5);
         expect(firstFluxArticles.reduce((accum, article) => accum && (article.sourceId == firstFlux.id), true))
-        .toBeTruthy()
+        .toBeTruthy();
         
         const seccondFluxArticles = await articleService.getArticlesSendedBy(secondFlux.id);
         expect(seccondFluxArticles.length).toEqual(5);
         expect(seccondFluxArticles.reduce((accum, article) => accum && (article.sourceId == secondFlux.id), true))
-        .toBeTruthy()
+        .toBeTruthy();
     });
 
     it('Delete article', async () => {

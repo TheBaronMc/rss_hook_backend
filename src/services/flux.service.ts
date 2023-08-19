@@ -11,7 +11,7 @@ export class FluxService {
     }
 
     async getFlux(id: number): Promise<Flux> {
-        return this.prisma.flux.findFirst({
+        return this.prisma.flux.findUniqueOrThrow({
             where: { id }
         });
     }
