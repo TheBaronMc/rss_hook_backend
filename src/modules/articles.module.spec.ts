@@ -1,7 +1,7 @@
 import * as request from 'supertest';
 import { Test } from '@nestjs/testing';
 import { ArticlesModule } from './articles.module';
-import { DeliveryService, FluxService, ArticleService, WebhooksService, PrismaService } from '../services';
+import { FluxService, ArticleService, PrismaService } from '../services';
 import { INestApplication } from '@nestjs/common';
 import { Articles } from '@prisma/client';
 
@@ -14,10 +14,8 @@ function includes(array: any[], article: Articles): boolean {
 describe('Artcile Module', () => {
     let app: INestApplication;
 
-    let deliveryService: DeliveryService;
     let prismaService: PrismaService;
     let fluxService: FluxService;
-    let webhooksService: WebhooksService;
     let articleService: ArticleService;
 
     beforeAll(async () => {
