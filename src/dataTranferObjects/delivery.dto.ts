@@ -1,11 +1,16 @@
-import { IsPositive } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsInt, IsPositive } from 'class-validator';
 
 export class GetDeliveryDstDto {
-    @IsPositive({ always: true, message:'id must be positive'})
+    @IsInt()
+    @Type(() => Number)
+    @IsPositive({ message:'id must be positive'})
     public id: number;
 }
 
 export class GetDeliverySrcDto {
-    @IsPositive({ always: true, message:'id must be positive'})
+    @IsInt()
+    @Type(() => Number)
+    @IsPositive({ message:'id must be positive'})
     public id: number;
 }

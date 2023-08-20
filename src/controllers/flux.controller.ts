@@ -1,4 +1,4 @@
-import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, OnModuleDestroy, UseFilters, Body, Param } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, OnModuleDestroy, UseFilters, Body, Param, UsePipes, ValidationPipe } from '@nestjs/common';
 import { FluxService } from '../services/flux.service';
 import { BindingService } from '../services/bindings.service';
 import { DeliveryService } from '../services/deliveries.service';
@@ -18,6 +18,7 @@ import { NotFoundErrorFilter } from '../exceptionFilters/not-found-error.filter'
     PrismaClientKnownRequestErrorFilter,
     NotFoundErrorFilter
 )
+@UsePipes(new ValidationPipe({ transform: true }))
 export class FluxController implements OnModuleDestroy {
     private readonly logger = new Logger(FluxController.name);
 

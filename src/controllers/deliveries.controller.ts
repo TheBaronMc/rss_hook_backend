@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseFilters } from '@nestjs/common';
+import { Controller, Get, Param, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
 import { DeliveryService } from '../services/deliveries.service';
 import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter';
 
@@ -8,12 +8,13 @@ import { GetDeliveryDstDto, GetDeliverySrcDto } from '../dataTranferObjects/deli
 
 @Controller('deliveries')
 @UseFilters(PrismaClientKnownRequestErrorFilter)
+@UsePipes(new ValidationPipe({ transform: true  }))
 export class DeliveriesController {
 
     constructor(private readonly deliveryService: DeliveryService) {}
-    
     @Get('articles/:id')
-    async getAllDeliveryDestination(@Param() getDeliveryDstDto: GetDeliveryDstDto): Promise<Webhooks[]> {        
+    @UsePipes(new ValidationPipe({ transform: true  }))
+    async getAllDeliveryDestination(@Param() getDeliveryDstDto: GetDeliveryDstDto): Promise<Webhooks[]> {     
         return this.deliveryService.getDelevriesOf(getDeliveryDstDto.id);
     }
 

@@ -1,4 +1,5 @@
-import { IsUrl, IsPositive } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsUrl, IsPositive, IsInt } from 'class-validator';
 
 export class CreateWebhookDto {
     @IsUrl()
@@ -6,6 +7,8 @@ export class CreateWebhookDto {
 }
 
 export class GetWebhookDto {
+    @IsInt()
+    @Type(() => Number)
     @IsPositive({ always: true, message:'id must be positive'})
     public id: number;
 }

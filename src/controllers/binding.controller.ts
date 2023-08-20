@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Post, UseFilters, Body, Param } from '@nestjs/common';
+import { Controller, Delete, Get, Post, UseFilters, Body, Param, UsePipes, ValidationPipe } from '@nestjs/common';
 import { BindingService } from '../services/bindings.service';
 import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter';
 
@@ -6,8 +6,9 @@ import { Webhooks, Flux, Bindings } from '@prisma/client';
 
 import { CreateBindingDto, DeleteBindingDto, GetFluxBindingsDto, GetWebhookBindingsDto } from '../dataTranferObjects/binding.dto';
 
-@Controller('hooks')
+@Controller('bindings')
 @UseFilters(PrismaClientKnownRequestErrorFilter)
+@UsePipes(new ValidationPipe({ transform: true }))
 export class BindingsController {
 
     constructor(private readonly bindingService: BindingService) {}

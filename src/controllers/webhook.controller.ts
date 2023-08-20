@@ -1,4 +1,4 @@
-import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, UseFilters, Body, Param } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, UseFilters, Body, Param, UsePipes, ValidationPipe } from '@nestjs/common';
 import { WebhooksService } from '../services/webhooks.service';
 import { BindingService } from '../services/bindings.service';
 import { DeliveryService } from '../services/deliveries.service';
@@ -15,6 +15,7 @@ import { Webhooks } from '@prisma/client';
     PrismaClientKnownRequestErrorFilter, 
     NotFoundErrorFilter
 )
+@UsePipes(new ValidationPipe({ transform: true }))
 export class WebhookController {
     private readonly logger = new Logger(WebhookController.name);
 
