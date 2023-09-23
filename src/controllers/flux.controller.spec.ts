@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FluxController } from './flux.controller';
 import { ArticleService, DeliveryService, WebhooksService, BindingService, FluxService, PrismaService } from '../services';
-import { HttpException } from '@nestjs/common';
 import { CreateFluxDto, DeleteFluxDto, UpdateFluxDto } from '../dataTranferObjects/flux.dto';
 import { NotFoundError, PrismaClientKnownRequestError } from '@prisma/client/runtime';
+import { FeedParseError } from '../rssFeed/manager/feedManager';
 
 describe('Flux controller tests', () => {
     let fluxController: FluxController;
@@ -61,7 +61,7 @@ describe('Flux controller tests', () => {
 
             await expect(fluxController.create(aCreateFluxDto))
             .rejects
-            .toThrow(HttpException);
+            .toThrow(FeedParseError);
         });
 
         it('Good url and good feed', async () => {

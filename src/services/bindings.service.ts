@@ -7,7 +7,7 @@ export class BindingService {
     constructor(private prisma: PrismaService) {}
 
     async createBinding(fluxId: number, webhookId: number): Promise<Bindings> {
-        return await this.prisma.bindings.create({
+        return this.prisma.bindings.create({
             data: {
                 fluxId,
                 webhookId

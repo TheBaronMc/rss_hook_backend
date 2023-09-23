@@ -2,7 +2,8 @@ import { Type } from 'class-transformer';
 import { IsUrl, IsPositive, IsInt } from 'class-validator';
 
 export class CreateWebhookDto {
-    @IsUrl()
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    @IsUrl({ require_tld: false })
     public url: string;
 }
 
@@ -17,7 +18,8 @@ export class UpdateWebhookDto {
     @IsPositive({ always: true, message:'id must be positive'})
     public id: number;
 
-    @IsUrl()
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    @IsUrl({ require_tld: false })
     public url: string;
 }
 

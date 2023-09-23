@@ -7,11 +7,10 @@ import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-
 
 import { Flux } from '@prisma/client';
 
-import RssFeedEmitter = require('rss-feed-emitter');
-import { XMLParser } from 'fast-xml-parser';
-import axios from 'axios';
 import { CreateFluxDto, DeleteFluxDto, GetFluxDto, UpdateFluxDto } from '../dataTranferObjects/flux.dto';
 import { NotFoundErrorFilter } from '../exceptionFilters/not-found-error.filter';
+import { FeedManager } from '../rssFeed/manager/feedManager';
+import axios from 'axios';
 
 @Controller('flux')
 @UseFilters(
@@ -22,49 +21,30 @@ import { NotFoundErrorFilter } from '../exceptionFilters/not-found-error.filter'
 export class FluxController implements OnModuleDestroy {
     private readonly logger = new Logger(FluxController.name);
 
-    private feeder: RssFeedEmitter = new RssFeedEmitter({ skipFirstLoad: true });
+    private feedManager: FeedManager;
 
     constructor(private readonly fluxService: FluxService,
         private readonly bindingService: BindingService,
-        private readonly devliveryService: DeliveryService,
-        private readonly articleService: ArticleService) {}
+        private readonly deliveryService: DeliveryService,
+        private readonly articleService: ArticleService) {
+        this.feedManager = new FeedManager();
+    }
 
     @Post()
     async create(@Body() createFluxDto: CreateFluxDto): Promise<Flux> {
-        // Is feed valid
-        const response = await axios.get(createFluxDto.url);
-        const parser = new XMLParser({
-            ignoreAttributes: false,
-            alwaysCreateTextNode: true,
-            ignoreDeclaration: true,
-            parseAttributeValue: true
-        });
-        const feed = parser.parse(response.data);
+        await this.feedManager.addFeed(createFluxDto.url);
 
-        // TODO: Remove this hotfix and use a true feed parser
-        const root = feed['rss'];
-        if (root) {
-            if (root['@_version'] != 2.0) {
-                this.logger.debug(`Request error - ${createFluxDto.url} is an invalid feed`);
-                throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
-            }
-        } else {
-            this.logger.debug(`Request error - ${createFluxDto.url} is an invalid feed`);
-            throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
-        }
+        const createdFlux = await this.fluxService.createFlux(createFluxDto.url);
 
-        const flux: Flux = await this.fluxService.createFlux(createFluxDto.url);
-
-        const event = `flux${flux.id}`;
-        this.feeder.add({
-            url: flux.url,
-            refresh: 2000,
-            eventName: event
-        });
-
-        this.feeder.addListener(event, this.onNewItem(flux));
+        // Add listener
+        this.feedManager.onNewItem(createFluxDto.url,
+            await newArticleListener(createdFlux, 
+                this.bindingService,
+                this.articleService,
+                this.deliveryService)
+        );
         
-        return flux;
+        return createdFlux;
     }
 
     @Get(':id')
@@ -90,12 +70,12 @@ export class FluxController implements OnModuleDestroy {
         const articles = await this.articleService.getArticlesSendedBy(fluxId);
         
         for (const article of articles)
-            await this.devliveryService.deleteDeleveriesOf(article.id);
+            await this.deliveryService.deleteDeleveriesOf(article.id);
 
         await this.articleService.deleteArticlesOf(fluxId);
 
         const deletedFlux = await this.fluxService.deleteFlux(fluxId);
-        this.feeder.remove(deletedFlux.url);
+        this.feedManager.removeFeed(deletedFlux.url);
 
         this.logger.log(`${deletedFlux.url} deleted`);
 
@@ -106,53 +86,46 @@ export class FluxController implements OnModuleDestroy {
     async update(@Body() updateFluxDto: UpdateFluxDto): Promise<Flux> {
         const oldFlux = await this.fluxService.getFlux(updateFluxDto.id);
 
-        this.feeder.remove(oldFlux.url);
-        this.feeder.add({
-            url: updateFluxDto.url,
-            refresh: 2000,
-            eventName: `flux${oldFlux.id}`
-        });
+        await this.feedManager.updateFeed(oldFlux.url, updateFluxDto.url);
 
         return this.fluxService.updateFlux(updateFluxDto.id, updateFluxDto.url);
     }
 
-    private onNewItem(flux: Flux) {
-        return async (item: any): Promise<void> => {
-            this.logger.log(`New article ${item.title} from ${flux.url}`);
-            
-            const createdArticle = await this.articleService.createArticle(
-                item.title,
-                flux.id,
-                item.description,
-                item.link
-            );
-            const webhooks = await this.bindingService.getAssociatedWebhooks(flux.id);
-
-            for (const webhook of webhooks) {
-                this.devliveryService.createDelevery(webhook.id, createdArticle.id);
-                
-                try {
-                    await axios.post(webhook.url, {
-                        embeds: [
-                            { 
-                                title: item.title,
-                                type: 'rich',
-                                description: item.description,
-                                url: item.link 
-                            }
-                        ]
-                    });
-                    this.logger.log(`Article ${createdArticle.id} published to webhook ${webhook.id}`);
-                } catch (error) {
-                    this.logger.error(`Article ${createdArticle.id} not published to webhook ${webhook.id}`);
-                }
-            }
-        };
-    }
-
     onModuleDestroy(): void {
-        this.feeder.removeAllListeners();
-        this.feeder.destroy();
+        this.feedManager.destroy();
     }
 }
 
+async function newArticleListener(parentFlux: Flux, bindingService: BindingService, articleService: ArticleService, deliveryService: DeliveryService): Promise<(article: any) => Promise<void>> {
+    return async (article): Promise<void> => {
+        // Insert the article in the DB
+        const createdArticle = await articleService.createArticle(
+            article.title,
+            parentFlux.id,
+            article.description,
+            article.link
+        );
+
+        // For each associated webhook, send the article
+        const associatedWebhooks = await bindingService.getAssociatedWebhooks(parentFlux.id);
+        
+        for (const webhook of associatedWebhooks) {
+            await deliveryService.createDelevery(webhook.id, createdArticle.id);
+
+            try {
+                await axios.post(webhook.url, {
+                    embeds: [
+                        {
+                            title: article.title,
+                            type: 'rich',
+                            description: article.description,
+                            url: article.link
+                        }
+                    ]
+                });
+            } catch (error) {
+                continue;
+            }
+        }
+    };
+}

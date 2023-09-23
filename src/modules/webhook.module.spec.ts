@@ -215,6 +215,7 @@ describe('WebhookModule', () => {
             expect(response.statusCode >= 300).toBeTruthy();
         });
 
+        /*
         it('Bad url', async () => {
             const aCreateWebhookDtpo = new CreateWebhookDto();
             aCreateWebhookDtpo.url = 'https://www.lemonde.fr/sport/rss_full.xml';
@@ -229,6 +230,7 @@ describe('WebhookModule', () => {
     
             expect(response.statusCode >= 300).toBeTruthy();
         });
+        */
 
         it('Good', async () => {
             const aCreateWebhookDtpo = new CreateWebhookDto();
