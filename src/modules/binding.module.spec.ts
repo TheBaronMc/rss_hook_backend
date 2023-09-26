@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { BindingModule } from './binding.module';
 import { BindingService, FluxService, WebhooksService, PrismaService } from '../services';
 import { INestApplication } from '@nestjs/common';
+import { ACCESS_PASSWORD_ENV } from '../configuration/readFile';
 
 describe('Binding Module', () => {
     let app: INestApplication;
@@ -28,6 +29,8 @@ describe('Binding Module', () => {
     });
 
     beforeEach(async () => {
+        process.env[ACCESS_PASSWORD_ENV] = ''; // No password
+
         await prismaService.deliveries.deleteMany();
         await prismaService.articles.deleteMany();
         await prismaService.bindings.deleteMany();

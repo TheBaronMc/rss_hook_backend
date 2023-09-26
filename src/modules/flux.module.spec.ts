@@ -6,6 +6,7 @@ import { INestApplication } from '@nestjs/common';
 import { PrismaService } from '../services';
 import { FluxController } from '../controllers';
 import { CreateFluxDto } from '../dataTranferObjects/flux.dto';
+import { ACCESS_PASSWORD_ENV } from '../configuration/readFile';
 
 describe('FluxModule', () => {
     let app: INestApplication;
@@ -28,6 +29,8 @@ describe('FluxModule', () => {
     });
 
     beforeEach(async () => {
+        process.env[ACCESS_PASSWORD_ENV] = ''; // No password
+
         await prismaService.deliveries.deleteMany();
         await prismaService.articles.deleteMany();
         await prismaService.bindings.deleteMany();

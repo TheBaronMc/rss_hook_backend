@@ -4,6 +4,7 @@ import { FluxService, WebhooksService, BindingService, ArticleService, DeliveryS
 import { HttpException } from '@nestjs/common';
 import { CreateWebhookDto, DeleteWebhookDto, GetWebhookDto, UpdateWebhookDto } from '../dataTranferObjects/webhook.dto';
 import { NotFoundError, PrismaClientKnownRequestError } from '@prisma/client/runtime';
+import { JwtService } from '@nestjs/jwt';
 
 describe('Webhook Controller', () => {
     let webhookController: WebhookController;
@@ -20,7 +21,7 @@ describe('Webhook Controller', () => {
     beforeAll(async () => {
         app = await Test.createTestingModule({
             controllers: [WebhookController],
-            providers: [WebhooksService, BindingService, DeliveryService, PrismaService],
+            providers: [WebhooksService, BindingService, DeliveryService, PrismaService, JwtService],
         }).compile();
 
         prismaService = app.get<PrismaService>(PrismaService);

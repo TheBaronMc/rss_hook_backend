@@ -4,6 +4,7 @@ import { ArticleService, DeliveryService, WebhooksService, BindingService, FluxS
 import { CreateFluxDto, DeleteFluxDto, UpdateFluxDto } from '../dataTranferObjects/flux.dto';
 import { NotFoundError, PrismaClientKnownRequestError } from '@prisma/client/runtime';
 import { FeedParseError } from '../rssFeed/manager/feedManager';
+import { JwtService } from '@nestjs/jwt';
 
 describe('Flux controller tests', () => {
     let fluxController: FluxController;
@@ -20,7 +21,7 @@ describe('Flux controller tests', () => {
     beforeAll(async () => {
         app = await Test.createTestingModule({
             controllers: [FluxController],
-            providers: [FluxService, ArticleService, BindingService, DeliveryService, PrismaService],
+            providers: [FluxService, ArticleService, BindingService, DeliveryService, PrismaService, JwtService],
         }).compile();
 
         prismaService   = app.get<PrismaService>(PrismaService);

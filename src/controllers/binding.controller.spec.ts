@@ -3,6 +3,8 @@ import { BindingsController } from './binding.controller';
 import { FluxService, WebhooksService, BindingService, PrismaService } from '../services';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 import { CreateBindingDto, DeleteBindingDto, GetFluxBindingsDto, GetWebhookBindingsDto } from '../dataTranferObjects/binding.dto';
+import { AuthGuard } from '../guards/auth/auth.guard';
+import { JwtService } from '@nestjs/jwt';
 
 describe('Binding Controller', () => {
     let bindingsController: BindingsController;
@@ -17,7 +19,7 @@ describe('Binding Controller', () => {
     beforeAll(async () => {
         app = await Test.createTestingModule({
             controllers: [BindingsController],
-            providers: [BindingService, PrismaService],
+            providers: [BindingService, PrismaService, JwtService],
         }).compile();
 
         prismaService = app.get<PrismaService>(PrismaService);

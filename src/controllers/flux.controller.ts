@@ -1,4 +1,4 @@
-import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, OnModuleDestroy, UseFilters, Body, Param, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, Patch, Post, OnModuleDestroy, UseFilters, Body, Param, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
 import { FluxService } from '../services/flux.service';
 import { BindingService } from '../services/bindings.service';
 import { DeliveryService } from '../services/deliveries.service';
@@ -11,6 +11,7 @@ import { CreateFluxDto, DeleteFluxDto, GetFluxDto, UpdateFluxDto } from '../data
 import { NotFoundErrorFilter } from '../exceptionFilters/not-found-error.filter';
 import { FeedManager } from '../rssFeed/manager/feedManager';
 import axios from 'axios';
+import { AuthGuard } from '../guards/auth/auth.guard';
 
 @Controller('flux')
 @UseFilters(
@@ -30,6 +31,7 @@ export class FluxController implements OnModuleDestroy {
         this.feedManager = new FeedManager();
     }
 
+    @UseGuards(AuthGuard)
     @Post()
     async create(@Body() createFluxDto: CreateFluxDto): Promise<Flux> {
         await this.feedManager.addFeed(createFluxDto.url);
@@ -57,6 +59,7 @@ export class FluxController implements OnModuleDestroy {
         return this.fluxService.getAllFlux();
     }
 
+    @UseGuards(AuthGuard)
     @Delete()
     async delete(@Body() deleteFluxDto: DeleteFluxDto): Promise<Flux> {
         const fluxId = deleteFluxDto.id;
@@ -82,6 +85,7 @@ export class FluxController implements OnModuleDestroy {
         return deletedFlux;
     }
 
+    @UseGuards(AuthGuard)
     @Patch()
     async update(@Body() updateFluxDto: UpdateFluxDto): Promise<Flux> {
         const oldFlux = await this.fluxService.getFlux(updateFluxDto.id);

@@ -5,6 +5,7 @@ import { PrismaService } from '../services';
 import { INestApplication } from '@nestjs/common';
 
 import { IncomingMessage, Server, ServerResponse, createServer } from 'http';
+import { ACCESS_PASSWORD_ENV } from '../configuration/readFile';
 
 type Article = {
     title: string,
@@ -202,6 +203,8 @@ describe('Application Integration Tests', () => {
     let prismaService: PrismaService;
 
     beforeEach(async () => {
+        process.env[ACCESS_PASSWORD_ENV] = ''; // No password
+
         const moduleRef = await Test.createTestingModule({
             imports: [AppModule],
         }).compile();
