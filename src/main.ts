@@ -3,8 +3,11 @@ import { AppModule } from './modules/app.module';
 
 import { AllExceptionsFilter } from 'src/exceptionFilters/all.filter';
 import { ValidationPipe } from '@nestjs/common';
+import { setConfiguration } from './configuration/readFile';
 
 async function bootstrap(): Promise<void> {
+  setConfiguration('./configuration.ini');
+
   const app = await NestFactory.create(AppModule);
 
   const httpAdapter = app.get(HttpAdapterHost);
