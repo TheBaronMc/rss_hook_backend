@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 
 import { readFileSync, existsSync } from 'fs';
 
@@ -50,7 +51,7 @@ function parseIni(data: string): Configuration {
     return conf;
 }
 
-function trySetEnv(name: string, defaultValue: string, conf: Configuration, pathInConf: string[]): void {
+function trySetEnv(name: string, defaultValue: string, conf: Configuration, pathInConf: string[], possibilities?: string[]): void {
     if (process.env[name] === undefined) {
         const valueInConf = pathInConf.reduce((previous: any, current: any) => {
             if (previous != undefined) {
@@ -61,11 +62,19 @@ function trySetEnv(name: string, defaultValue: string, conf: Configuration, path
         }, conf);
 
         process.env[name] = valueInConf === undefined ? defaultValue : valueInConf;
+
+        if (possibilities && !possibilities.includes(process.env[name])) {
+            throw new Error(`Wrong value for '${process.env[name]}': Value must be in ${possibilities}`);
+        }
     }
 }
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const ACCESS_PASSWORD_ENV = 'ACCESS_PASSWORD';
+export const ENVIRONMENT_ENV = 'ENV';
+export const ENVIRONMENT_PROD_VALUE = 'PROD';
+export const ENVIRONMENT_DEV_VALUE = 'DEV';
+export const JWT_SECRET = 'JWT_SECRET';
+
 
 /**
  * Read the potential INI file and set env variables
@@ -81,5 +90,7 @@ export function setConfiguration(filePath: string): void {
         // Set access password
         const defaultPass = '';
         trySetEnv(ACCESS_PASSWORD_ENV, defaultPass, conf, ['general', 'access_password']);
+        trySetEnv(ENVIRONMENT_ENV, 'ENV', conf, ['general', 'environment'], [ENVIRONMENT_PROD_VALUE, ENVIRONMENT_DEV_VALUE]);
+        trySetEnv(JWT_SECRET, '', conf, ['general', 'secret']);
     } 
 }

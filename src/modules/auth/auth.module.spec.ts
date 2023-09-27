@@ -2,20 +2,15 @@ import * as request from 'supertest';
 import { Test } from '@nestjs/testing';
 import { AuthModule } from './auth.module';
 import { INestApplication } from '@nestjs/common';
-import { Articles } from '@prisma/client';
-import { ACCESS_PASSWORD_ENV } from '../../configuration/readFile';
+import { ACCESS_PASSWORD_ENV, ENVIRONMENT_DEV_VALUE, ENVIRONMENT_ENV } from '../../configuration/readFile';
 import { createHash } from 'crypto';
 
-function includes(array: any[], article: Articles): boolean {
-    return array.some((value) => {
-        return value.id == article.id;
-    });
-}
-
-describe('Artcile Module', () => {
+describe('Auth Module', () => {
     let app: INestApplication;
 
     beforeAll(async () => {
+        process.env[ENVIRONMENT_ENV] = ENVIRONMENT_DEV_VALUE;
+
         const moduleRef = await Test.createTestingModule({
             imports: [AuthModule],
         }).compile();
