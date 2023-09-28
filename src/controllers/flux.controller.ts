@@ -1,4 +1,4 @@
-import { Controller, Logger, Delete, Get, Patch, Post, OnModuleDestroy, UseFilters, Body, Param, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, Patch, Post, OnModuleDestroy, OnModuleInit, UseFilters, Body, Param, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
 import { FluxService } from '../services/flux.service';
 import { BindingService } from '../services/bindings.service';
 import { DeliveryService } from '../services/deliveries.service';
@@ -19,7 +19,7 @@ import { AuthGuard } from '../guards/auth/auth.guard';
     NotFoundErrorFilter
 )
 @UsePipes(new ValidationPipe({ transform: true }))
-export class FluxController implements OnModuleDestroy {
+export class FluxController implements OnModuleDestroy, OnModuleInit {
     private readonly logger = new Logger(FluxController.name);
 
     private feedManager: FeedManager;
@@ -97,6 +97,22 @@ export class FluxController implements OnModuleDestroy {
 
     onModuleDestroy(): void {
         this.feedManager.destroy();
+    }
+
+    async onModuleInit(): Promise<void> {
+        const allFlux = await this.fluxService.getAllFlux();
+
+        for (const aFlux of allFlux) {
+            await this.feedManager.addFeed(aFlux.url);
+
+            // Add listener
+            this.feedManager.onNewItem(aFlux.url,
+                await newArticleListener(aFlux, 
+                    this.bindingService,
+                    this.articleService,
+                    this.deliveryService)
+            );
+        }
     }
 }
 
