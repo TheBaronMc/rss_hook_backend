@@ -1,31 +1,44 @@
-import { Controller, Delete, Get, HttpException, HttpStatus, Patch, Post, Req } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, HttpException, HttpStatus, Patch, Post, UseFilters, Body, Param, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
 import { WebhooksService } from '../services/webhooks.service';
-import { HooksService } from '../services/hooks.service';
+import { BindingService } from '../services/bindings.service';
 import { DeliveryService } from '../services/deliveries.service';
 
-import { Webhooks } from '@prisma/client';
+import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter';
+import { NotFoundErrorFilter } from '../exceptionFilters/not-found-error.filter';
 
-import { Request } from 'express';
+import { CreateWebhookDto, UpdateWebhookDto, DeleteWebhookDto, GetWebhookDto } from '../dataTranferObjects/webhook.dto';
+
+import { Webhooks } from '@prisma/client';
+import { AuthGuard } from '../guards/auth/auth.guard';
 
 @Controller('webhooks')
+@UseFilters(
+    PrismaClientKnownRequestErrorFilter, 
+    NotFoundErrorFilter
+)
+@UsePipes(new ValidationPipe({ transform: true }))
 export class WebhookController {
+    private readonly logger = new Logger(WebhookController.name);
 
     constructor(private readonly webhookService: WebhooksService,
-        private readonly hookService: HooksService,
+        private readonly bindingService: BindingService,
         private readonly deliveryService: DeliveryService) {}
 
+    @UseGuards(AuthGuard)
     @Post()
-    async create(@Req() request: Request) {
-        if (!request.body.url)
-            throw new HttpException('A url is required', HttpStatus.FORBIDDEN);
+    async create(@Body() createWebhookDto: CreateWebhookDto): Promise<Webhooks>  {
 
         try {
-            new URL(request.body.url);
+            new URL(createWebhookDto.url);
         } catch {
+            this.logger.debug(`Request error - '${createWebhookDto.url}' is not a URL`);
             throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
         }
 
-        return this.webhookService.createWebhook(request.body.url);
+        const webhook: Webhooks = await this.webhookService.createWebhook(createWebhookDto.url);
+        this.logger.log(`New webhook: ${webhook.url}`);
+
+        return webhook;
     }
     
     @Get()
@@ -33,47 +46,36 @@ export class WebhookController {
         return this.webhookService.getAllWebhooks();
     }
 
+    @Get(':id')
+    async getWebhook(@Param() getWebhookDto: GetWebhookDto): Promise<Webhooks> {
+        return this.webhookService.getWebhook(getWebhookDto.id);
+    }
+
+    @UseGuards(AuthGuard)
     @Delete()
-    async delete(@Req() request: Request) {
-        if (!request.body.id)
-            throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
-
-        if (!await this.exist(request.body.id))
-            throw new HttpException('This id does not exist', HttpStatus.FORBIDDEN);
-
-        let id = request.body.id;
+    async delete(@Body() deleteWebhookDto: DeleteWebhookDto): Promise<Webhooks> {
+        const id = deleteWebhookDto.id;
 
         // Deleting all deliveries
         await this.deliveryService.deleteDeleveriesTo(id);
 
         // Deleting all hooks
-        let flux = await this.hookService.get_hooked(id);
-        for (let fl of flux)
-            await this.hookService.delete_hook(fl.id, id);
+        const associatedFlux = await this.bindingService.getAssociatedFlux(id);
+        for (const flux of associatedFlux)
+            await this.bindingService.deleteBinding(flux.id, id);
 
-        return this.webhookService.deleteWebhook(id);
+        const webhook = await this.webhookService.deleteWebhook(id);
+        this.logger.log(`Webhook ${webhook.id} (${webhook.url}) has been deleted`);
+
+        return webhook;
     }
 
+    @UseGuards(AuthGuard)
     @Patch()
-    async update(@Req() request: Request) {
-        if (!request.body.id)
-            throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
-        if (!request.body.url)
-            throw new HttpException('A url is required', HttpStatus.FORBIDDEN);
+    async update(@Body() updateWebhookDto: UpdateWebhookDto): Promise<Webhooks> {
+        const webhook = await this.webhookService.updateWebhook(updateWebhookDto.id, updateWebhookDto.url);
+        this.logger.log(`Webhook ${webhook.id} updated, new URL: ${webhook.url}`);
 
-        try {
-            new URL(request.body.url);
-        } catch {
-            throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
-        }
-
-        if (!await this.exist(request.body.id))
-            throw new HttpException('Wrong id', HttpStatus.FORBIDDEN);
-
-        return this.webhookService.updateWebhook(request.body.id, request.body.url);
-    }
-
-    private async exist(id: number): Promise<boolean> {
-        return (await this.getAll()).some(wh => wh.id == id);
+        return webhook;
     }
 }

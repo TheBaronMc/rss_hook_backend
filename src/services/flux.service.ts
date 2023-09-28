@@ -11,9 +11,9 @@ export class FluxService {
     }
 
     async getFlux(id: number): Promise<Flux> {
-        return this.prisma.flux.findFirst({
+        return this.prisma.flux.findUniqueOrThrow({
             where: { id }
-        })
+        });
     }
 
     async createFlux(url: string): Promise<Flux> {
@@ -25,13 +25,13 @@ export class FluxService {
     async deleteFlux(id: number): Promise<Flux> {
         return this.prisma.flux.delete({
             where: { id }
-        })
+        });
     }
 
     async updateFlux(id: number, url: string): Promise<Flux> {
         return this.prisma.flux.update({
             data: { url },
             where: { id }
-        })
+        });
     }
 }

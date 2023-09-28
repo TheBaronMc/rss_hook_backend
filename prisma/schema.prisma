@@ -13,24 +13,24 @@ datasource db {
 model Flux {
   id        Int       @default(autoincrement()) @id
   url       String    @unique
-  hooks     Hooks[]
+  webhooks  Bindings[]
   articles  Articles[]
 }
 
 model Webhooks {
   id        Int     @default(autoincrement()) @id
   url       String  @unique
-  flux      Hooks[]
+  flux      Bindings[]
   articles  Deliveries[]
 }
 
-model Hooks {
-  destination   Flux      @relation(fields: [destinationId], references: [id])
-  destinationId Int
-  source        Webhooks  @relation(fields: [sourceId], references: [id])
-  sourceId      Int
+model Bindings {
+  flux        Flux      @relation(fields: [fluxId], references: [id])
+  fluxId      Int
+  webhook     Webhooks  @relation(fields: [webhookId], references: [id])
+  webhookId   Int
 
-  @@id([sourceId, destinationId])
+  @@id([fluxId, webhookId])
 }
 
 model Articles {

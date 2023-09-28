@@ -1,73 +1,57 @@
-import { Controller, Delete, Get, HttpException, HttpStatus, Patch, Post, Req } from '@nestjs/common';
+import { Controller, Logger, Delete, Get, Patch, Post, OnModuleDestroy, UseFilters, Body, Param, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
 import { FluxService } from '../services/flux.service';
-import { HooksService } from '../services/hooks.service';
+import { BindingService } from '../services/bindings.service';
 import { DeliveryService } from '../services/deliveries.service';
 import { ArticleService } from '../services/articles.service';
+import { PrismaClientKnownRequestErrorFilter } from '../exceptionFilters/prisma-client-known-request-error.filter';
 
 import { Flux } from '@prisma/client';
 
-import { Request } from 'express';
-
-import RssFeedEmitter = require('rss-feed-emitter');
-import { XMLParser } from 'fast-xml-parser';
+import { CreateFluxDto, DeleteFluxDto, GetFluxDto, UpdateFluxDto } from '../dataTranferObjects/flux.dto';
+import { NotFoundErrorFilter } from '../exceptionFilters/not-found-error.filter';
+import { FeedManager } from '../rssFeed/manager/feedManager';
 import axios from 'axios';
+import { AuthGuard } from '../guards/auth/auth.guard';
 
 @Controller('flux')
-export class FluxController {
+@UseFilters(
+    PrismaClientKnownRequestErrorFilter,
+    NotFoundErrorFilter
+)
+@UsePipes(new ValidationPipe({ transform: true }))
+export class FluxController implements OnModuleDestroy {
+    private readonly logger = new Logger(FluxController.name);
 
-    private feeder: RssFeedEmitter = new RssFeedEmitter({ skipFirstLoad: true });
+    private feedManager: FeedManager;
 
     constructor(private readonly fluxService: FluxService,
-        private readonly hookService: HooksService,
-        private readonly devliveryService: DeliveryService,
-        private readonly articleService: ArticleService) {}
+        private readonly bindingService: BindingService,
+        private readonly deliveryService: DeliveryService,
+        private readonly articleService: ArticleService) {
+        this.feedManager = new FeedManager();
+    }
 
+    @UseGuards(AuthGuard)
     @Post()
-    async create(@Req() request: Request): Promise<Flux> {
-        if (!request.body.url)
-            throw new HttpException('A url is required', HttpStatus.FORBIDDEN);
+    async create(@Body() createFluxDto: CreateFluxDto): Promise<Flux> {
+        await this.feedManager.addFeed(createFluxDto.url);
 
-        // Url format check
-        try {
-            new URL(request.body.url);
-        } catch {
-            throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
-        }
+        const createdFlux = await this.fluxService.createFlux(createFluxDto.url);
 
-        // Is feed valid
-        let response = await axios.get(request.body.url);
-        let parser = new XMLParser({
-            ignoreAttributes: false,
-            alwaysCreateTextNode: true,
-            ignoreDeclaration: true,
-            parseAttributeValue: true
-        });
-        let feed = parser.parse(response.data);
-
-        // TODO: Remove this hotfix and use a true feed parser
-        let root = feed['rss'];
-        if (root) {
-            if (root['@_version'] != 2.0) {
-                throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
-            }
-        } else {
-            throw new HttpException('Invalid feed', HttpStatus.FORBIDDEN);
-        }
-
-        let flux = await this.fluxService.createFlux(request.body.url);
-
-
-        let event = `flux${flux.id}`;
-
-        this.feeder.add({
-            url: flux.url,
-            refresh: 2000,
-            eventName: event
-        });
-
-        this.feeder.addListener(event, this.onNewItem(flux));
+        // Add listener
+        this.feedManager.onNewItem(createFluxDto.url,
+            await newArticleListener(createdFlux, 
+                this.bindingService,
+                this.articleService,
+                this.deliveryService)
+        );
         
-        return flux
+        return createdFlux;
+    }
+
+    @Get(':id')
+    async getFlux(@Param() getFluxDto: GetFluxDto): Promise<Flux> {
+        return this.fluxService.getFlux(getFluxDto.id);
     }
     
     @Get()
@@ -75,105 +59,77 @@ export class FluxController {
         return this.fluxService.getAllFlux();
     }
 
+    @UseGuards(AuthGuard)
     @Delete()
-    async delete(@Req() request: Request): Promise<Flux> {
-        if (!request.body.id)
-            throw new HttpException('An id is required', HttpStatus.FORBIDDEN);
-
-        let flux_id: number = parseInt(request.body.id);
-        if (isNaN(flux_id))
-            throw new HttpException('Flux id has to be a number', HttpStatus.FORBIDDEN);
-
-        if (!await this.exist(flux_id))
-        throw new HttpException('This id doesn\'t exist', HttpStatus.FORBIDDEN);
+    async delete(@Body() deleteFluxDto: DeleteFluxDto): Promise<Flux> {
+        const fluxId = deleteFluxDto.id;
         
         // Removing all hooks
-        let hooks = await this.hookService.get_hooks(flux_id);
-        for (let hook of hooks)
-            await this.hookService.delete_hook(flux_id, hook.id)
+        const hooks = await this.bindingService.getAssociatedWebhooks(fluxId);
+        for (const hook of hooks)
+            await this.bindingService.deleteBinding(fluxId, hook.id);
 
         // Removing all articles and deliveries
-        let articles = await this.articleService.getArticlesSendedBy(flux_id);
+        const articles = await this.articleService.getArticlesSendedBy(fluxId);
         
-        for (let article of articles)
-            await this.devliveryService.deleteDeleveriesOf(article.id);
+        for (const article of articles)
+            await this.deliveryService.deleteDeleveriesOf(article.id);
 
-        await this.articleService.deleteArticlesOf(flux_id);
+        await this.articleService.deleteArticlesOf(fluxId);
 
-        /*
-        clearInterval(this.rssFlux[flux_id]);
-        this.rssFlux.delete(flux_id);
-        */
-        let deleted_flux = await this.fluxService.deleteFlux(flux_id);
-        this.feeder.remove(deleted_flux.url);
+        const deletedFlux = await this.fluxService.deleteFlux(fluxId);
+        this.feedManager.removeFeed(deletedFlux.url);
 
-        return deleted_flux;
+        this.logger.log(`${deletedFlux.url} deleted`);
+
+        return deletedFlux;
     }
 
+    @UseGuards(AuthGuard)
     @Patch()
-    async update(@Req() request: Request): Promise<Flux> {
-        if (!request.body.id)
-            throw new HttpException('Missing id', HttpStatus.FORBIDDEN);
-        if (!request.body.url)
-            throw new HttpException('Missing url', HttpStatus.FORBIDDEN);
+    async update(@Body() updateFluxDto: UpdateFluxDto): Promise<Flux> {
+        const oldFlux = await this.fluxService.getFlux(updateFluxDto.id);
 
-        if (!await this.exist(request.body.id))
-            throw new HttpException('Wrong id', HttpStatus.FORBIDDEN);
+        await this.feedManager.updateFeed(oldFlux.url, updateFluxDto.url);
 
-        try {
-            new URL(request.body.url);
-        } catch {
-            throw new HttpException('Wrong url', HttpStatus.FORBIDDEN);
-        }
-
-        const old_flux = await this.fluxService.getFlux(request.body.id);
-
-        this.feeder.remove(old_flux.url);
-        this.feeder.add({
-            url: request.body.url,
-            refresh: 2000,
-            eventName: `flux${old_flux.id}`
-        });
-
-        return await this.fluxService.updateFlux(request.body.id, request.body.url);
+        return this.fluxService.updateFlux(updateFluxDto.id, updateFluxDto.url);
     }
 
-    private async exist(id: number): Promise<boolean> {
-        return (await this.getAll()).some(flux => flux.id == id);
-    }
-
-    private onNewItem(flux: Flux) {
-        return async (item) => {
-            console.log('NEW ITEM!!!!!!!!!!!!');
-            
-            const created_article = await this.articleService.createArticle(
-                item.title,
-                flux.id,
-                item.description,
-                item.link
-            );
-            const webhooks = await this.hookService.get_hooks(flux.id);
-
-            for (let webhook of webhooks) {
-                this.devliveryService.createDelevery(webhook.id, created_article.id);
-                
-                try {
-                    await axios.post(webhook.url, {
-                        embeds: [
-                            { 
-                                title: item.title,
-                                type: 'rich',
-                                description: item.description,
-                                url: item.link 
-                            }
-                        ]
-                    });
-                    console.log(`Article ${created_article.id} published to webhook ${webhook.id}`);
-                } catch (error) {
-                    console.log(`Article ${created_article.id} not published to webhook ${webhook.id}`);
-                }
-            }
-        };
+    onModuleDestroy(): void {
+        this.feedManager.destroy();
     }
 }
 
+async function newArticleListener(parentFlux: Flux, bindingService: BindingService, articleService: ArticleService, deliveryService: DeliveryService): Promise<(article: any) => Promise<void>> {
+    return async (article): Promise<void> => {
+        // Insert the article in the DB
+        const createdArticle = await articleService.createArticle(
+            article.title,
+            parentFlux.id,
+            article.description,
+            article.link
+        );
+
+        // For each associated webhook, send the article
+        const associatedWebhooks = await bindingService.getAssociatedWebhooks(parentFlux.id);
+        
+        for (const webhook of associatedWebhooks) {
+            await deliveryService.createDelevery(webhook.id, createdArticle.id);
+
+            try {
+                await axios.post(webhook.url, {
+                    embeds: [
+                        {
+                            title: article.title,
+                            type: 'rich',
+                            description: article.description,
+                            url: article.link
+                        }
+                    ]
+                });
+            } catch (error) {
+                continue;
+            }
+        }
+    };
+}

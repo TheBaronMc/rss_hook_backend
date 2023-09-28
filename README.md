@@ -6,22 +6,47 @@ RssHook is made to bind rss flux to a webhook. This project use [Nest](https://g
 
 ## Installation
 
+First, you next to clone this repo and install libs.
 ```bash
+$ git clone https://github.com/TheBaronMc/rss_hook_backend.git
+$ cd rss_hook_backend
 $ npm install
 ```
 
-## Running the app
-
+In order to generate prisma libs, create a `.env` file with this content:
+```
+DATABASE_URL="file:./dev.db"
+```
+Next, run the following command:
 ```bash
-# development
-$ npm run start
+$ npx prisma migrate dev --name init
+```
 
-# watch mode
-$ npm run start:dev
-
-# production mode
+Finally, build and run the project.
+``` bash
+$ npm run build
 $ npm run start:prod
 ```
+
+## Configuration fille
+
+At the root of the app you can create a configuration file `configuration.ini`.
+
+Example:
+```INI
+[general]
+access_password="toto"    # Password of authentication
+environment="PROD"        # or "DEV"
+secret="ThisIsNotASecret" # To generate JWT
+```
+
+### Options
+
+| name  | Description |
+|--------|-------------|
+| `access_password` | Password that will be ask to modifiy webhooks, flux and bindings. If you don't want a password, set the value to `""` |
+| `environment` | Describe the environment in which the app is running. Value can be equal to `PROD` or `DEV`. |
+| `secret`      | This secret will be used to generate JWT for the authentication. This value must be set in `PROD` environment. |
 
 ## Test
 
@@ -121,9 +146,12 @@ Return the created flux
 
 **Exceptions:**
 
++ `Unauthorized`: Status Code 401
 + `A url is required`: Status Code 403, the URL is missing from the parameters.
 + `Wrong url`: Status Code 403, you gave a bad URL.
 + `Invalid flux`: Status Code 403, you didn't gave a URL of an RSS Feed.
+
+> ⚠️ If an access password is set, you will need a token in order to access to this route. Please see `/auth/login` route.
 
 #### Get all flux
 
@@ -156,8 +184,11 @@ Return the deleted flux
 }
 ```
 
+> ⚠️ If an access password is set, you will need a token in order to access to this route. Please see `/auth/login` route.
+
 **Exceptions:**
 
++ `Unauthorized`: Status Code 401
 + `An id is required`: Status Code 403, you didn't provide an id.
 + `Flux id has to be a number`: Status Code 403
 + `This id doesn\'t exist`: Status Code 403, no flux associated with this id.
@@ -182,11 +213,13 @@ Return the updated flux
 
 **Exceptions:**
 
++ `Unauthorized`: Status Code 401
 + `Missing id`: Status Code 403, you didn't provide an id.
 + `Missing url`: Status Code 403, you didn't provide an new url.
 + `Wrong id`: Status Code 403, no flux associated with this id.
 + `Wrong url`: Status Code 403, wrong url format.
 
+> ⚠️ If an access password is set, you will need a token in order to access to this route. Please see `/auth/login` route.
 
 ### Webhooks
 
@@ -209,8 +242,11 @@ Return the created webhook
 
 **Exceptions:**
 
++ `Unauthorized`: Status Code 401
 + `A url is required`: Status Code 403, the URL is missing from the parameters.
 + `Wrong url`: Status Code 403, you gave a bad URL.
+
+> ⚠️ If an access password is set, you will need a token in order to access to this route. Please see `/auth/login` route.
 
 #### Get all webhook
 
@@ -245,8 +281,11 @@ Return the deleted webhook
 
 **Exceptions:**
 
++ `Unauthorized`: Status Code 401
 + `An id is required`: Status Code 403, you didn't provide an id.
 + `This id doesn\'t exist`: Status Code 403, no webhook associated with this id.
+
+> ⚠️ If an access password is set, you will need a token in order to access to this route. Please see `/auth/login` route.
 
 #### Update a webhook
 
@@ -268,10 +307,13 @@ Return the updated webhook
 
 **Exceptions:**
 
++ `Unauthorized`: Status Code 401
 + `Missing id`: Status Code 403, you didn't provide an id.
 + `Missing url`: Status Code 403, you didn't provide an new url.
 + `Wrong id`: Status Code 403, no webhook associated with this id.
 + `Wrong url`: Status Code 403, wrong url format.
+
+> ⚠️ If an access password is set, you will need a token in order to access to this route. Please see `/auth/login` route.
 
 ### Articles
 
@@ -334,10 +376,13 @@ false // Not created - already exist
 
 **Exceptions:**
 
++ `Unauthorized`: Status Code 401
 + `A flux id is required`: Status Code 403
 + `A webhook is required`: Status Code 403
 + `This flux id doesn't exist`: Status Code 403
 + `This webhook id doesn't exist`: Status Code 403
+
+> ⚠️ If an access password is set, you will need a token in order to access to this route. Please see `/auth/login` route.
 
 #### Get all flux bind with a webhook
 
@@ -407,10 +452,13 @@ false // Not deleted - does not exist
 
 **Exceptions:**
 
++ `Unauthorized`: Status Code 401
 + `A flux id is required`: Status Code 403
 + `A webhook is required`: Status Code 403
 + `This flux id doesn't exist`: Status Code 403
 + `This webhook id doesn't exist`: Status Code 403
+
+> ⚠️ If an access password is set, you will need a token in order to access to this route. Please see `/auth/login` route.
 
 ### Deliveries
 
@@ -463,6 +511,29 @@ List of articles
 
 + `A webhook id is required`: Status Code 403
 + `Id should be a numbe`: Status Code 403
+
+## Authentication
+
+### Login
+
+**POST**: `/auth/login`
+
+| Parameter | Description |
+| --------- | ----------- |
+| `pass`    | Password    |
+
+**Reponse:** 
+Your access token.
+```json
+{
+  "access_token": "your token"
+}
+```
+> The token is valide for 60 seconds.
+
+**Exceptions:**
+
++ `Unauthorized`: Status Code 401
 
 ## License
 
